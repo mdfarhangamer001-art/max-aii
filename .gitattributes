@@ -1,0 +1,12 @@
+# Treat all images and binary files as binary to prevent git line-ending/UTF-8 conversion corruption
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.mp4 binary
+*.mov binary
+*.exe binary
+*.zip binary
+*.tar.gz binary

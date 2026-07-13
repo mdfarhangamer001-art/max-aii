@@ -1,0 +1,12 @@
+{
+  "name": "Marya AI",
+  "description": "An ultra-intelligent AI Operating System featuring a multi-agent orchestration brain, real-time voice, vision, memory, browser agent, automation workflows, and high-fidelity 2D/3D holographic views called Marya AI.",
+  "requestFramePermissions": [
+    "microphone",
+    "display-capture",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
