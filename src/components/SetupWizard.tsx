@@ -167,7 +167,7 @@ export function SetupWizard({ isOpen, onComplete }: SetupWizardProps) {
                 <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse" />
                 <img
                   src="/assets/icon.png"
-                  alt="Marya Logo Emblem"
+                  alt="Max-AI Logo Emblem"
                   className="relative w-20 h-20 rounded-2xl border border-cyan-400/40 bg-black object-cover shadow-[0_0_25px_rgba(6,182,212,0.45)]"
                   referrerPolicy="no-referrer"
                 />
@@ -177,7 +177,7 @@ export function SetupWizard({ isOpen, onComplete }: SetupWizardProps) {
               Initialize your hyper-intelligent Companion OS
             </h3>
             <p className="text-slate-300 text-xs sm:text-sm font-sans leading-relaxed">
-              Welcome to **Marya AI (2080 Edition)**. Marya AI is a responsive, multi-agent cognitive operating system modeled after futuristic conversational assistants.
+              Welcome to **Max-AI (2080 Edition)**. Max-AI is a responsive, multi-agent cognitive operating system modeled after futuristic conversational assistants.
             </p>
             
             {/* Corrected Owner & Project Badge */}

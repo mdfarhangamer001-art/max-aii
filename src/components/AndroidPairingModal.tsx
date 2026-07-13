@@ -80,7 +80,7 @@ export function AndroidPairingModal({
   const [editingSubtitles, setEditingSubtitles] = useState<boolean>(true);
   
   // Clipboard states
-  const [pcClipboard, setPcClipboard] = useState<string>("https://ais-dev-marya.secured.link/auth-token");
+  const [pcClipboard, setPcClipboard] = useState<string>("https://ais-dev-maxaii.secured.link/auth-token");
   const [phoneClipboard, setPhoneClipboard] = useState<string>("Initial Android Clip Node");
   
   // Files simulator
@@ -108,7 +108,7 @@ export function AndroidPairingModal({
   // System Notifications
   const [phoneNotifications, setPhoneNotifications] = useState<Array<{ id: string; app: string; title: string; desc: string; time: string }>>([
     { id: "1", app: "Instagram", title: "New Follower Request", desc: "someone_security requested to follow you", time: "Just now" },
-    { id: "2", app: "System OS", title: "Accessibility Permission Alert", desc: "Marya Companion granted deep device control overlay", time: "5m ago" },
+    { id: "2", app: "System OS", title: "Accessibility Permission Alert", desc: "Max-AI Companion granted deep device control overlay", time: "5m ago" },
     { id: "3", app: "Secure Node", title: "Key Exchange Refresh", desc: "Diffie-Hellman entropy updated successfully", time: "12m ago" }
   ]);
 
@@ -120,7 +120,7 @@ export function AndroidPairingModal({
   const [usbInstallMessage, setUsbInstallMessage] = useState<string>("");
   const [phoneAdbAvailable, setPhoneAdbAvailable] = useState<boolean>(false);
   const [companionApiKey, setCompanionApiKey] = useState<string>(() => {
-    return localStorage.getItem("marya_companion_api_key") || "MARYA-KEY-" + Math.floor(100000 + Math.random() * 900000);
+    return localStorage.getItem("max_companion_api_key") || "MAX_AI-KEY-" + Math.floor(100000 + Math.random() * 900000);
   });
 
   const checkUsbStatus = async () => {
@@ -199,13 +199,13 @@ export function AndroidPairingModal({
 
   const saveCompanionApiKey = (key: string) => {
     setCompanionApiKey(key);
-    localStorage.setItem("marya_companion_api_key", key);
+    localStorage.setItem("max_companion_api_key", key);
     addLog(`Stored secure API key pairing configuration token: ${key.substring(0, 10)}...`);
   };
 
   // Generate unique credentials independent of app name
   const generatePayload = () => {
-    const appId = "MARYA_AIOS_SECURE_NODE_9921X";
+    const appId = "MAX_AI_OS_SECURE_NODE_9921X";
     const sessionToken = "SES_TOKEN_" + Math.random().toString(36).substring(2, 15).toUpperCase();
     const publicKey = "ECDH_PUB_" + Math.random().toString(36).substring(2, 12).toUpperCase() + "_SEC56";
     
@@ -426,7 +426,7 @@ export function AndroidPairingModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold font-mono text-white tracking-wider uppercase">Marya AI Remote Companion Engine</h3>
+                <h3 className="text-sm font-bold font-mono text-white tracking-wider uppercase">Max-AI Remote Companion Engine</h3>
                 {pairingStep === "connected" ? (
                   <span className="px-2 py-0.5 rounded-full text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono animate-pulse">
                     SECURED NODE CONNECTED
@@ -662,7 +662,7 @@ export function AndroidPairingModal({
                     </div>
 
                     <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
-                      Push the pre-configured Marya AI Mobile Client over ADB. This client executes accessibility automation, media syncs, and screen mirrors natively.
+                      Push the pre-configured Max-AI Mobile Client over ADB. This client executes accessibility automation, media syncs, and screen mirrors natively.
                     </p>
 
                     <button
@@ -1035,7 +1035,7 @@ export function AndroidPairingModal({
                             </div>
 
                             <div className="flex-1 flex flex-col justify-center gap-1.5 text-[8px] text-slate-400 py-2">
-                              <div>App ID: <span className="text-white font-semibold">MARYA_AIOS</span></div>
+                              <div>App ID: <span className="text-white font-semibold">MAX_AI_OS</span></div>
                               <div>Trusted Server Node: <span className="text-white">Active (Localhost)</span></div>
                               <div>Permission Layer: <span className="text-emerald-400">Accessibility Granted</span></div>
                               <div className="pt-2 border-t border-white/5">Auto-Wipe Memory: <span className="text-rose-500">Disabled</span></div>

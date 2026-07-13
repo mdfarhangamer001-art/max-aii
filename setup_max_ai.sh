@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Marya AI - All-in-One Automated Setup & Launcher for Mac/Linux
+# Max-AI - All-in-One Automated Setup & Launcher for Mac/Linux
 set -e
 
 echo "====================================================================="
-# Using Marya AI OS banner
-echo "              🚀 MARYA AI - AUTOMATED ALL-IN-ONE SETUP SUITE 🚀"
+# Using Max-AI OS banner
+echo "              🚀 MAX-AI - AUTOMATED ALL-IN-ONE SETUP SUITE 🚀"
 echo "====================================================================="
 echo ""
 echo " This unified script will automatically:"
@@ -12,7 +12,7 @@ echo " 1. Check and install Python dependencies (pyautogui, pillow, requests)"
 echo " 2. Automatically download and extract official Android ADB tools"
 echo " 3. Setup Node.js dependencies"
 echo " 4. Fire up the local PC Desktop Control Bridge (Port 3002)"
-echo " 5. Launch the main Marya AI central server (Port 3000)"
+echo " 5. Launch the main Max-AI central server (Port 3000)"
 echo ""
 echo "====================================================================="
 echo ""
@@ -78,15 +78,15 @@ fi
 echo ""
 
 # 5. STARTING THE CONTROL BRIDGES
-echo "[5/5] Initiating MARYA AI Core Engines..."
+echo "[5/5] Initiating MAX-AI Core Engines..."
 echo ""
-echo "[Marya-AI] Starting local desktop controller on Loopback Port 3002..."
+echo "[Max-AI] Starting local desktop controller on Loopback Port 3002..."
 $PYTHON_CMD local-desktop-bridge.py &
 
-echo "[Marya-AI] Booting central Node.js web server on Port 3000..."
+echo "[Max-AI] Booting central Node.js web server on Port 3000..."
 echo "====================================================================="
 echo ""
-echo " 🚀 Marya AI is now ready to roll!"
+echo " 🚀 Max-AI is now ready to roll!"
 echo " 👉 Open your browser and head to: http://localhost:3000"
 echo ""
 echo "====================================================================="

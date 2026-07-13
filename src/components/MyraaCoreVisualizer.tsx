@@ -51,7 +51,7 @@ export const MyraaCoreVisualizer: React.FC<MyraaCoreVisualizerProps> = ({
   const [hasError, setHasError] = useState<boolean>(false);
 
   const handleVideoError = (videoName: string) => {
-    console.warn(`[Marya AI OS Video] Video source offline for: ${videoName}. Running procedurally generated high-fidelity visualizer.`);
+    console.warn(`[Max-AI OS Video] Video source offline for: ${videoName}. Running procedurally generated high-fidelity visualizer.`);
     setHasError(true);
   };
 

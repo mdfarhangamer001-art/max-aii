@@ -39,14 +39,20 @@ dotenv.config();
 import crypto from "crypto";
 
 function getDesktopBridgeToken(): string {
-  const tokenFile = "marya-token.txt";
-  const oldTokenFile = "tehzeeb-token.txt";
+  const tokenFile = "max-token.txt";
+  const oldTokenFile = "marya-token.txt";
+  const oldOldTokenFile = "tehzeeb-token.txt";
   try {
     if (fsSync.existsSync(tokenFile)) {
       return fsSync.readFileSync(tokenFile, "utf8").trim();
     }
     if (fsSync.existsSync(oldTokenFile)) {
       const oldToken = fsSync.readFileSync(oldTokenFile, "utf8").trim();
+      fsSync.writeFileSync(tokenFile, oldToken, "utf8");
+      return oldToken;
+    }
+    if (fsSync.existsSync(oldOldTokenFile)) {
+      const oldToken = fsSync.readFileSync(oldOldTokenFile, "utf8").trim();
       fsSync.writeFileSync(tokenFile, oldToken, "utf8");
       return oldToken;
     }
@@ -67,7 +73,7 @@ if (isPkg) {
 export function getWritablePath(filename: string): string {
   if (process.env.ELECTRON_RUNNING === "true" || isPkg) {
     const appData = process.env.APPDATA || (process.platform === "darwin" ? path.join(os.homedir(), "Library", "Application Support") : path.join(os.homedir(), ".config"));
-    const targetDir = path.join(appData, "Marya AI");
+    const targetDir = path.join(appData, "Max-AI");
     if (!fsSync.existsSync(targetDir)) {
       try {
         fsSync.mkdirSync(targetDir, { recursive: true });
@@ -1233,8 +1239,8 @@ async function startServer() {
 
   // Retrieve updater settings from secure encrypted storage
   async function getUpdaterConfig(): Promise<UpdaterConfig> {
-    const defaultOwner = "mukimudeen76-ops";
-    const defaultRepo = "Marya11";
+    const defaultOwner = "mukimudeen76";
+    const defaultRepo = "Max-AI";
     try {
       if (fsSync.existsSync(UPDATER_SECURE_FILE)) {
         const data = await fs.readFile(UPDATER_SECURE_FILE, "utf-8");
@@ -1279,7 +1285,7 @@ async function startServer() {
 
   /**
    * Checks for automatic updates by fetching the latest release from the private GitHub repository API
-   * at 'https://api.github.com/repos/mukimudeen76-ops/Marya11/releases/latest'.
+   * at 'https://api.github.com/repos/mukimudeen76/Max-AI/releases/latest'.
    * 
    * @param owner The owner of the repository
    * @param repo The name of the repository
@@ -1490,7 +1496,7 @@ async function startServer() {
       let targetRelease = null;
 
       // For private/custom repositories or when token is present, fetch latest release directly
-      if (decryptedToken || (owner === "mukimudeen76" && (repo === "Tehzeeb-AI-OS" || repo === "Max-AI")) || (owner === "mukimudeen76-ops" && (repo === "Marya11" || repo === "Marya"))) {
+      if (decryptedToken || (owner === "mukimudeen76" && (repo === "Tehzeeb-AI-OS" || repo === "Max-AI" || repo === "max-aii")) || (owner === "mukimudeen76-ops" && (repo === "Marya11" || repo === "Marya" || repo === "Max-AI" || repo === "max-aii"))) {
         console.log(`[Updater] Fetching latest release directly via checkPrivateGitHubRelease for ${owner}/${repo}`);
         try {
           targetRelease = await checkPrivateGitHubRelease(owner, repo, decryptedToken);

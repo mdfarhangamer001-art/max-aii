@@ -866,7 +866,7 @@ export function AIDashboard({
             </h1>
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-0.5">
               <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
-                Marya AI OS Autonomous Dashboard (2080 Edition)
+                Max-AI OS Autonomous Dashboard (2080 Edition)
               </p>
               <span className="text-[9px] font-mono text-slate-600 hidden sm:inline">|</span>
               <p className="text-[10px] font-mono text-cyan-400 flex items-center gap-1">
@@ -957,7 +957,7 @@ export function AIDashboard({
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mb-3 leading-relaxed">
-                If running Marya AI on a cloud server, enter the local token displayed in your PC terminal to authorize system control commands.
+                If running Max-AI on a cloud server, enter the local token displayed in your PC terminal to authorize system control commands.
               </p>
               <div className="flex flex-col gap-2">
                 <label className="text-[9px] font-mono uppercase text-slate-500 font-bold">Security Token</label>
@@ -2415,7 +2415,7 @@ export function AIDashboard({
               </div>
 
               <p className="text-slate-300 text-xs leading-relaxed font-sans">
-                You are about to permanently erase this memory from Marya AI's cognitive records. No hidden backup, cache, or restore point will be kept. Marya AI will lose all awareness of this detail forever.
+                You are about to permanently erase this memory from Max-AI's cognitive records. No hidden backup, cache, or restore point will be kept. Max-AI will lose all awareness of this detail forever.
               </p>
 
               <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 font-mono text-[10px] text-slate-400">

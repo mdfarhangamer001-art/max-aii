@@ -69,7 +69,7 @@ def log_message(text, log_type="INFO"):
         logs_list.pop(0)
 
 # Register starting message
-log_message("Marya AI OS Desktop Controller Bridge initializing...", "INFO")
+log_message("Max-AI OS Desktop Controller Bridge initializing...", "INFO")
 if HAS_PYAUTOGUI:
     log_message("PyAutoGUI automation engine loaded successfully.", "SUCCESS")
 else:
@@ -82,8 +82,9 @@ else:
 
 
 # Manage persistent local security token
-token_file = "marya-token.txt"
-old_token_file = "tehzeeb-token.txt"
+token_file = "max-token.txt"
+old_token_file = "marya-token.txt"
+old_old_token_file = "tehzeeb-token.txt"
 authToken = ""
 try:
     if os.path.exists(token_file):
@@ -91,6 +92,12 @@ try:
             authToken = f.read().strip()
     elif os.path.exists(old_token_file):
         with open(old_token_file, "r") as f:
+            authToken = f.read().strip()
+        # Copy to rebranded file
+        with open(token_file, "w") as f:
+            f.write(authToken)
+    elif os.path.exists(old_old_token_file):
+        with open(old_old_token_file, "r") as f:
             authToken = f.read().strip()
         # Copy to rebranded file
         with open(token_file, "w") as f:
@@ -966,7 +973,7 @@ class DesktopBridgeRequestHandler(BaseHTTPRequestHandler):
             stdout, stderr = proc.communicate()
             return proc.returncode, stdout, stderr
         except FileNotFoundError:
-            raise Exception("ADB (Android Debug Bridge) executable is not installed. For a one-click automated setup, please run 'setup_marya_ai.bat' (Windows) or 'setup_marya_ai.sh' (Mac/Linux) which will download and install ADB automatically.")
+            raise Exception("ADB (Android Debug Bridge) executable is not installed. For a one-click automated setup, please run 'setup_max_ai.bat' (Windows) or 'setup_max_ai.sh' (Mac/Linux) which will download and install ADB automatically.")
 
 
 
@@ -975,7 +982,7 @@ def run_server():
     httpd = HTTPServer(server_address, DesktopBridgeRequestHandler)
     
     log_message(f"======================================================", "INFO")
-    log_message(f"🚀 Marya AI OS Local Desktop Control Bridge Running!", "SUCCESS")
+    log_message(f"🚀 Max-AI OS Local Desktop Control Bridge Running!", "SUCCESS")
     log_message(f"📡 Secure Loopback Address: http://127.0.0.1:{PORT}", "INFO")
     log_message(f"🔑 Persistent Security Token: {authToken}", "SUCCESS")
     log_message(f"🔒 Authenticate frames using bearer/query parameter 'token'", "INFO")

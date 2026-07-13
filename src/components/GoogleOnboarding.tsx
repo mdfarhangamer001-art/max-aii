@@ -58,7 +58,7 @@ export function GoogleOnboarding({ onSignedIn, onContinueOffline }: GoogleOnboar
           <div>
             <span className="text-[9px] font-mono tracking-[0.2em] text-cyan-400 font-bold uppercase">SECURE CLOUD DEPLOYMENT INITIALIZATION</span>
             <h1 className="text-3xl font-light text-white tracking-tight mt-1 font-sans">
-              Marya AI
+              Max-AI
             </h1>
             <p className="text-[10px] font-mono text-slate-500 mt-0.5 uppercase">Model Year: 2080 Edition</p>
           </div>
@@ -66,7 +66,7 @@ export function GoogleOnboarding({ onSignedIn, onContinueOffline }: GoogleOnboar
 
         <div className="space-y-4 mb-8 text-left">
           <p className="text-slate-300 text-xs sm:text-sm font-sans leading-relaxed text-center">
-            Marya AI is your hyper-intelligent holographic companion. Sign in with your Google Account to initialize high-grade secure cloud synchronization.
+            Max-AI is your hyper-intelligent holographic companion. Sign in with your Google Account to initialize high-grade secure cloud synchronization.
           </p>
 
           {/* Corrected Owner & Project Badge */}

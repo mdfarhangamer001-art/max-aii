@@ -475,7 +475,7 @@ export function DesktopCompanion({
           >
             <div className="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-slate-950 border-r border-b border-white/10 rotate-45" />
             <div className="flex items-center justify-between gap-1 mb-1 border-b border-white/5 pb-0.5 text-[8px] uppercase font-bold tracking-widest text-cyan-400">
-              <span>Marya AI</span>
+              <span>Max-AI</span>
               <button 
                 onClick={() => setBubbleVisible(false)} 
                 className="opacity-40 hover:opacity-100 transition cursor-pointer"

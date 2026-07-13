@@ -1397,7 +1397,7 @@ export default function App() {
   useEffect(() => {
     const fetchBridgeToken = async () => {
       try {
-        const savedToken = localStorage.getItem("marya_bridge_token_override");
+        const savedToken = localStorage.getItem("max_bridge_token_override");
         if (savedToken) {
           setDesktopBridgeToken(savedToken);
           return;
@@ -3084,7 +3084,7 @@ export default function App() {
                 </div>
 
                 <p className="text-xs text-slate-400 mb-4 font-mono leading-relaxed">
-                  Marya AI OS is capable of real-time voice synchronization and responsive UI changes. Try commanding:
+                  Max-AI OS is capable of real-time voice synchronization and responsive UI changes. Try commanding:
                 </p>
                 <div className="space-y-2 text-xs font-mono text-slate-300">
                   <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition cursor-pointer font-sans text-slate-200">
@@ -3380,9 +3380,9 @@ export default function App() {
         onUpdateBridgeToken={(token) => {
           setDesktopBridgeToken(token);
           if (token) {
-            localStorage.setItem("marya_bridge_token_override", token);
+            localStorage.setItem("max_bridge_token_override", token);
           } else {
-            localStorage.removeItem("marya_bridge_token_override");
+            localStorage.removeItem("max_bridge_token_override");
           }
         }}
         themeColor={themeColor}
