@@ -1,4 +1,4 @@
-name: Tehzeeb AI OS Release Suite
+name: Max-AI OS Release Suite
 
 on:
   push:
@@ -100,14 +100,14 @@ jobs:
           draft: false
           prerelease: false
           tag_name: ${{ steps.version_tag.outputs.tag }}
-          name: Tehzeeb AI OS Release ${{ steps.version_tag.outputs.tag }}
+          name: Max-AI OS Release ${{ steps.version_tag.outputs.tag }}
           body: |
-            # Tehzeeb AI OS (2080 Edition) - Release ${{ steps.version_tag.outputs.tag }}
+            # Max-AI OS (2080 Edition) - Release ${{ steps.version_tag.outputs.tag }}
 
             Welcome to the future of multi-agent cognitive operating systems.
 
             ## Windows Setup Installer:
-            - 🚀 **`Tehzeeb AI OS Setup Installer.exe`**: Download this installer to automatically install the application to your Program Files directory, create elegant Desktop/Start Menu shortcuts, and configure a standard uninstaller!
+            - 🚀 **`Max-AI OS Setup Installer.exe`**: Download this installer to automatically install the application to your Program Files directory, create elegant Desktop/Start Menu shortcuts, and configure a standard uninstaller!
               - **No installation, extraction, or external web browser dependencies required.**
               - Full secure desktop container with custom security header stripper allowing Google, YouTube, ChatGPT, and external links to load beautifully inside our React window frames.
               - **Integrated PC Automation Brain**: Automated keyboard, mouse click, window scrolling, system volume, media control, lock states, notepad controls, and desktop capture actions executed securely via powershell system APIs.

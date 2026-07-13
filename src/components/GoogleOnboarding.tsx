@@ -75,11 +75,11 @@ export function GoogleOnboarding({ onSignedIn, onContinueOffline }: GoogleOnboar
               <span className="text-cyan-400">🎖️</span>
               <div>
                 <span className="text-slate-400">Owner: </span>
-                <span className="text-white font-bold">mukimudeen76-ops</span>
+                <span className="text-white font-bold">mukimudeen76</span>
               </div>
             </div>
             <a 
-              href="https://github.com/mukimudeen76-ops/Marya11" 
+              href="https://github.com/mukimudeen76/Max-AI" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="text-[9px] text-cyan-400 hover:text-cyan-300 transition hover:underline flex items-center gap-1"

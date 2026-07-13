@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.10",
   "type": "module",
   "main": "electron-main.cjs",
   "bin": "dist/server.cjs",
@@ -45,8 +45,8 @@
     "vite": "^6.2.3"
   },
   "build": {
-    "appId": "com.tehzeeb.aios",
-    "productName": "Tehzeeb AI OS",
+    "appId": "com.maxai.os",
+    "productName": "Max-AI OS",
     "asar": false,
     "directories": {
       "output": "release"
@@ -68,7 +68,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Tehzeeb AI OS",
+      "shortcutName": "Max-AI OS",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "runAfterFinish": true

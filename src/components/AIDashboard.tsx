@@ -388,7 +388,7 @@ export function AIDashboard({
   const [ramLoad, setRamLoad] = useState<number>(5.4); // GB
   const [netUpload, setNetUpload] = useState<number>(1.2); // MB/s
   const [netDownload, setNetDownload] = useState<number>(14.5); // MB/s
-  const [clipboardContent, setClipboardContent] = useState<string>("https://github.com/tehzeeb-ai/os-core");
+  const [clipboardContent, setClipboardContent] = useState<string>("https://github.com/mukimudeen76/Max-AI");
 
   // Active workflow steps
   const [workflowSteps, setWorkflowSteps] = useState<Array<{ id: string; action: string; param: string }>>([
@@ -765,7 +765,7 @@ export function AIDashboard({
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(memories, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `tehzeeb_longterm_memories_${new Date().toISOString().split("T")[0]}.json`);
+    downloadAnchor.setAttribute("download", `max_ai_longterm_memories_${new Date().toISOString().split("T")[0]}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -870,9 +870,9 @@ export function AIDashboard({
               </p>
               <span className="text-[9px] font-mono text-slate-600 hidden sm:inline">|</span>
               <p className="text-[10px] font-mono text-cyan-400 flex items-center gap-1">
-                <span>Created by mukimudeen76-ops</span>
+                <span>Created by mukimudeen76</span>
                 <a 
-                  href="https://github.com/mukimudeen76-ops/Marya11" 
+                  href="https://github.com/mukimudeen76/Max-AI" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="hover:underline text-[9px] font-bold text-white bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/25"

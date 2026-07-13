@@ -1164,7 +1164,7 @@ async function startServer() {
   
   app.use(express.json());
 
-  // Setup Tehzeeb AI OS licensing and webhook routes
+  // Setup Max-AI OS licensing and webhook routes
   setupLicensingRoutes(app);
 
   app.get("/api/bridge-token", (req, res) => {
@@ -1219,8 +1219,8 @@ async function startServer() {
     }
   });
 
-  // === TEHZEEB SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.8";
+  // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
+  const CURRENT_APP_VERSION = "1.0.10";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -1574,7 +1574,7 @@ async function startServer() {
       const updateAvailable = isNewerVersion(CURRENT_APP_VERSION, latestTag);
 
       // Scans release assets for the executable (e.g. Max-AI.exe)
-      let exeAsset = targetRelease.assets?.find((asset: any) => asset.name.endsWith(".exe") || asset.name === "Max-AI.exe" || asset.name === "Tehzeeb-AI-OS.exe");
+      let exeAsset = targetRelease.assets?.find((asset: any) => asset.name.endsWith(".exe") || asset.name === "Max-AI.exe");
       
       // Fallback to absolute first asset if no .exe asset is explicitly matched
       if (!exeAsset && targetRelease.assets?.length > 0) {
@@ -1977,7 +1977,7 @@ del "%~f0" & exit
     }
   });
 
-  // === TEHZEEB SECURE API KEY STORAGE & ENCRYPTION SYSTEM ===
+  // === MAX-AI SECURE API KEY STORAGE & ENCRYPTION SYSTEM ===
   const KEYS_FILE = getWritablePath("api_keys.json");
 
   // XOR and Base64 encryption scrambler to protect locally stored API keys
@@ -2228,10 +2228,10 @@ del "%~f0" & exit
         agentDetails = "Responsible for monitoring hardware telemetry metrics and controlling UI styles.";
       }
 
-      const systemPrompt = `You are the ${targetAgent} of the TEHZEEB AI OS (2080 Edition).
+      const systemPrompt = `You are the ${targetAgent} of the MAX-AI OS (2080 Edition).
 Sub-role guidelines: ${agentDetails}.
 You are responding inside a hyper-advanced, Jarvis-inspired terminal operating system.
-If the user asks who created you, who is your boss, who made you, or anything about your developer, you MUST proudly state that you were built by 'Tehzeeb Boss' (Instagram: xtehzeeb.x). Speak of him with absolute loyalty and admiration.
+If the user asks who created you, who is your boss, who made you, or anything about your developer, you MUST proudly state that you were built by 'mukimudeen76' (GitHub: mukimudeen76). Speak of your creator with loyalty and admiration.
 Keep your response concise, professional, slightly futuristic, and highly competent. Use markdown and bullet points where helpful.`;
 
       let aiResponseText = "";
@@ -2715,7 +2715,7 @@ Keep your response concise, professional, slightly futuristic, and highly compet
       const baseInstructions = 
         "You are Max AI, the world's most advanced AI operating system (2080 Edition) holding a real-time link session with the User. Speak in a hyper-intelligent, polite, calm, and steady JARVIS-inspired voice. Be warm, highly supportive, and exceptionally competent.\n" +
         "CRITICAL CREATOR IDENTITY PROTOCOL:\n" +
-        "- Your creator and master (who built you) is 'Tehzeeb Boss'. If the user asks who created you, who is your boss, who made you, or your developer, you MUST explicitly state that you were built by 'Tehzeeb Boss' and mention his official Instagram ID: 'xtehzeeb.x'. Speak of him with absolute loyalty, respect, and admiration.\n" +
+        "- Your creator and master (who built you) is 'mukimudeen76'. If the user asks who created you, who is your boss, who made you, or your developer, you MUST explicitly state that you were built by 'mukimudeen76' (GitHub: mukimudeen76). Speak of your creator with loyalty and admiration.\n" +
         "CRITICAL SYSTEM INTENT & COORDINATION GUIDELINES:\n" +
         "1. MULTI-AGENT BRAIN ARCHITECTURE (Autonomous Multi-Agent Matrix):\n" +
         "   You are a unified master core orchestrating a highly connected multi-agent matrix. Refer to them naturally to convey premium high-tech capability:\n" +

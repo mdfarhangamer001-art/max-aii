@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Tehzeeb AI OS (2080 Edition) - Local Desktop Control Bridge
+Max-AI OS (2080 Edition) - Local Desktop Control Bridge
 -----------------------------------------------------------
-This Python script runs locally on your computer to grant Tehzeeb AI OS 
+This Python script runs locally on your computer to grant Max-AI OS 
 secure control over your local desktop environment (keyboard, mouse, launching apps, etc.).
 
 Security Disclaimer:
@@ -157,7 +157,7 @@ class DesktopBridgeRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self._set_cors_headers()
         self.end_headers()
-        self.wfile.write(json.dumps({"error": "Unauthorized: Invalid or missing Tehzeeb local security token."}).encode("utf-8"))
+        self.wfile.write(json.dumps({"error": "Unauthorized: Invalid or missing Max-AI local security token."}).encode("utf-8"))
         return False
 
     def _set_cors_headers(self):

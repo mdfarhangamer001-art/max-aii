@@ -716,7 +716,7 @@ export const MyraaCoreVisualizer: React.FC<MyraaCoreVisualizerProps> = ({
       {/* 2. State-machine AI loops crossfade manager (Z-index 10) - Hidden in floating_core/2d modes */}
       {(uiMode === "glassmorphism" || uiMode === "dashboard") && (
         <div 
-          id="tehzeeb-character-stage"
+          id="maxai-character-stage"
           className="absolute z-10 w-full h-full flex items-center justify-center pointer-events-auto transition-all duration-700"
         >
           <div className="relative w-full max-w-4xl aspect-[16/9] flex items-center justify-center scale-[0.95] sm:scale-110 select-none pointer-events-none md:max-h-[72vh] max-h-[62vh]">
@@ -793,7 +793,7 @@ export const MyraaCoreVisualizer: React.FC<MyraaCoreVisualizerProps> = ({
 
       {/* 3. High performance rendering canvas (Z-index 20) */}
       <canvas
-        id="tehzeeb-primary-living-canvas"
+        id="maxai-primary-living-canvas"
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none z-20"
       />
