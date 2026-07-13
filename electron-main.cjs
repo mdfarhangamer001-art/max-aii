@@ -1,5 +1,6 @@
 const { app, BrowserWindow, session, ipcMain } = require('electron');
 const path = require('path');
+const { signInWithGoogleDesktop } = require('./googleAuth.cjs');
 
 // Disable security warnings in console for clean operation
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
@@ -31,7 +32,7 @@ function createCompanionWindow() {
     }
   });
 
-  companionWindow.loadURL('http://localhost:3000/?view=companion');
+  companionWindow.loadURL('http://127.0.0.1:3000/?view=companion');
   companionWindow.setMenu(null);
 
   companionWindow.on('closed', () => {
@@ -99,6 +100,17 @@ function createMainWindow() {
   // Remove the default Electron application menu bar
   mainWindow.setMenu(null);
 
+  // Maximize the window immediately so that it fills the entire screen on startup!
+  mainWindow.maximize();
+
+  // Handle F11 key shortcut to toggle true immersive full-screen mode
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F11' && input.type === 'keyDown') {
+      mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      event.preventDefault();
+    }
+  });
+
   // Start our bundled Express server inside the Electron main process
   try {
     require('./dist/server.cjs');
@@ -139,7 +151,7 @@ function createMainWindow() {
   });
 
   // Load our Express React app served on port 3000
-  const appUrl = 'http://localhost:3000';
+  const appUrl = 'http://127.0.0.1:3000';
   
   function loadUrlWithRetry() {
     if (!mainWindow) return;
@@ -171,6 +183,11 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    ipcMain.handle('google-signin', async () => {
+      console.log('[Electron Main] Received google-signin request over IPC');
+      return signInWithGoogleDesktop();
+    });
+
     createMainWindow();
 
     app.on('activate', () => {
