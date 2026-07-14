@@ -1,4 +1,4 @@
-Name: 🚀 Auto Build & Release MAX-AII
+name: 🚀 Auto Build & Release MAX-AII
 
 on:
   push:
