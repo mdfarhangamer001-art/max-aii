@@ -14,10 +14,9 @@ jobs:
         with:
           node-version: '24.x'
           cache: 'npm'
-      - run: npm install
+      - run: npm install --legacy-peer-deps
       - run: npm run lint || true
 
-  # New Job: Automatically generates the version tag before building
   create-tag:
     needs: validate
     runs-on: ubuntu-latest
@@ -55,28 +54,25 @@ jobs:
         run: npm rebuild
         continue-on-error: true
 
-      - name: Build Application
-        run: npm run build
+      - name: Build Application (.exe Creation)
+        # यहाँ हमने 'npm run build' को बदलकर सही इलेक्ट्रॉन बिल्ड कमांड कर दिया है
+        run: npm run electron:build
 
-      # Step to analyze and display the .exe file size
-      - name: Analyze EXE Size
-        id: size_check
+      - name: Analyze Release Folder Content
         shell: powershell
         run: |
-          $exeFile = Get-ChildItem -Path dist\**\*.exe | Select-Object -First 1
-          if ($exeFile) {
-              $sizeMb = [math]::Round(($exeFile.Length / 1MB), 2)
-              echo "EXE_SIZE=$sizeMb MB" >> $env:GITHUB_ENV
-              echo "Found executable: $($exeFile.Name) ($sizeMb MB)"
+          echo "--- Checking release folder content ---"
+          if (Test-Path release) {
+              Get-ChildItem -Path release -Recurse
           } else {
-              echo "EXE_SIZE=Unknown" >> $env:GITHUB_ENV
-              echo "No .exe file found in dist/ directory!"
+              echo "Release folder not found!"
           }
 
+      # यहाँ हम dist/ के बजाय release/ फ़ोल्डर को आर्टिफ़ैक्ट के रूप में अपलोड कर रहे हैं
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/
+          path: release/
 
   release:
     needs: [create-tag, build-windows]
@@ -90,7 +86,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-build
-          path: dist-release
+          path: release-artifacts
 
       - name: Create and Upload to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -102,8 +98,9 @@ jobs:
             
             **Asset Statistics:**
             * Platform: Windows
-            * Format: Standalone `.exe`
-          files: dist-release/**/*.exe
+            * Format: Standalone `.exe` / Installer
+          # release-artifacts फ़ोल्डर में जो भी .exe फाइलें बनेंगी, उन्हें यह उठा लेगा
+          files: release-artifacts/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+
