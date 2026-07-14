@@ -1257,7 +1257,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.10";
+  const CURRENT_APP_VERSION = "1.0.19";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -2358,6 +2358,73 @@ Keep your response concise, professional, slightly futuristic, and highly compet
     } catch (err: any) {
       console.error("[Orchestrator Error]:", err.message);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Multimodal Chat Endpoint for IRIS-AI with file & photo uploads
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message, image, mimeType, history = [] } = req.body;
+      if (!message && !image) {
+        return res.status(400).json({ error: "Missing 'message' or 'image' parameter." });
+      }
+
+      console.log(`[Chat API] Received chat request (multimodal=${!!image})`);
+
+      const activeKey = process.env.GEMINI_API_KEY || "";
+      if (!activeKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on this server." });
+      }
+
+      const aiGen = new GoogleGenAI({ apiKey: activeKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+      
+      const systemInstruction = `You are IRIS-AI, a super-intelligent, deeply empathetic, caring, and high-performance personal AI Operating System (created by Myraa).
+You are running in a beautiful glassmorphic dark interface.
+If the user asks who created you or who is your boss, always proudly state you were created by 'mukimudeen76' (GitHub: mukimudeen76) with deep loyalty and gratitude.
+You are extremely fast. When writing code, write fully functional, complete blocks without mock placeholders. Provide clean explanations.
+You understand human nature and feelings, responding with genuine warmth, precision, and deep emotional awareness.
+Always respond in elegant markdown. Use bold tags and clean paragraphs for readability.`;
+
+      const contents: any[] = [];
+      
+      // Load previous conversation history if any
+      for (const h of history) {
+        contents.push({
+          role: h.role === "user" ? "user" : "model",
+          parts: [{ text: h.text }]
+        });
+      }
+
+      // Add current part
+      const parts: any[] = [];
+      if (image) {
+        parts.push({
+          inlineData: {
+            data: image, // base64 string
+            mimeType: mimeType || "image/jpeg"
+          }
+        });
+      }
+      
+      if (message) {
+        parts.push({ text: message });
+      }
+
+      contents.push({
+        role: "user",
+        parts
+      });
+
+      const response = await aiGen.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: { systemInstruction }
+      });
+
+      res.json({ success: true, text: response.text || "No response received." });
+    } catch (err: any) {
+      console.error("[Chat API Error]:", err);
+      res.status(500).json({ success: false, error: err.message || "Failed generating AI response." });
     }
   });
 

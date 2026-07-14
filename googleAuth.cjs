@@ -32,11 +32,29 @@ function signInWithGoogleDesktop() {
 
     try {
       const { app } = require('electron');
-      const configPath = (app && app.isPackaged && process.resourcesPath)
-        ? path.join(process.resourcesPath, 'firebase-applet-config.json')
-        : path.join(__dirname, 'firebase-applet-config.json');
-      if (!fs.existsSync(configPath)) {
-        throw new Error('firebase-applet-config.json not found. Looked in: ' + configPath);
+      let configPath = '';
+      const possiblePaths = [];
+
+      if (app) {
+        try {
+          possiblePaths.push(path.join(app.getAppPath(), 'firebase-applet-config.json'));
+        } catch (e) {}
+        if (process.resourcesPath) {
+          possiblePaths.push(path.join(process.resourcesPath, 'firebase-applet-config.json'));
+        }
+      }
+      possiblePaths.push(path.join(__dirname, 'firebase-applet-config.json'));
+      possiblePaths.push(path.join(process.cwd(), 'firebase-applet-config.json'));
+
+      for (const p of possiblePaths) {
+        if (p && fs.existsSync(p)) {
+          configPath = p;
+          break;
+        }
+      }
+
+      if (!configPath) {
+        throw new Error('firebase-applet-config.json not found. Looked in:\n' + possiblePaths.join('\n'));
       }
       const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       const clientId = firebaseConfig.oAuthClientId;

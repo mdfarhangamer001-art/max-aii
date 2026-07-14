@@ -33,10 +33,17 @@ import {
   QrCode,
   Terminal,
   Lock,
-  Shield
+  Shield,
+  MessageSquare,
+  Mic,
+  FileText,
+  FileUp,
+  File
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Memory, MemoryCategory } from "../lib/memoryTypes";
+import { MyraaCoreVisualizer, MyraaEmotion } from "./MyraaCoreVisualizer";
+import { MyraaAudioSession, LiveState } from "../lib/audio";
 
 export interface JarvisSubAgent {
   id: string;
@@ -295,24 +302,24 @@ export const agentCategories: JarvisCategory[] = [
 ];
 
 interface AIDashboardProps {
-  isOpen: boolean;
-  onClose: () => void;
-  memories: Memory[];
-  onAddMemory: (category: MemoryCategory, text: string) => Promise<void>;
-  onDeleteMemory: (id: string) => Promise<void>;
-  isDesktopConnected: boolean;
-  desktopResolution: string;
-  desktopBridgeLogs: any[];
+  isOpen?: boolean;
+  onClose?: () => void;
+  memories?: Memory[];
+  onAddMemory?: (category: MemoryCategory, text: string) => Promise<void>;
+  onDeleteMemory?: (id: string) => Promise<void>;
+  isDesktopConnected?: boolean;
+  desktopResolution?: string;
+  desktopBridgeLogs?: any[];
   desktopBridgeToken?: string;
   onUpdateBridgeToken?: (token: string) => void;
-  themeColor: string;
-  subscriptionTier: string;
-  onOpenSubscriptionModal: () => void;
-  pairedDevice: { id: string; model: string; key: string; session: string } | null;
-  onPairMobile: () => void;
-  phoneConnected: boolean;
-  phoneDevices: any[];
-  phoneAdbAvailable: boolean;
+  themeColor?: string;
+  subscriptionTier?: string;
+  onOpenSubscriptionModal?: () => void;
+  pairedDevice?: { id: string; model: string; key: string; session: string } | null;
+  onPairMobile?: () => void;
+  phoneConnected?: boolean;
+  phoneDevices?: any[];
+  phoneAdbAvailable?: boolean;
   activeVoiceId?: string;
   onSwitchVoice?: (voiceId: string) => void;
   user?: any;
@@ -323,34 +330,283 @@ interface AIDashboardProps {
 }
 
 export function AIDashboard({
-  isOpen,
-  onClose,
-  memories,
-  onAddMemory,
-  onDeleteMemory,
-  isDesktopConnected,
-  desktopResolution,
-  desktopBridgeLogs,
+  isOpen = true,
+  onClose = () => {},
+  memories = [],
+  onAddMemory = async () => {},
+  onDeleteMemory = async () => {},
+  isDesktopConnected = true,
+  desktopResolution = "1920x1080",
+  desktopBridgeLogs = [],
   desktopBridgeToken = "",
-  onUpdateBridgeToken,
-  themeColor,
-  subscriptionTier,
-  onOpenSubscriptionModal,
-  pairedDevice,
-  onPairMobile,
-  phoneConnected,
-  phoneDevices,
-  phoneAdbAvailable,
-  activeVoiceId,
-  onSwitchVoice,
+  onUpdateBridgeToken = () => {},
+  themeColor = "cyan",
+  subscriptionTier = "Premium",
+  onOpenSubscriptionModal = () => {},
+  pairedDevice = null,
+  onPairMobile = () => {},
+  phoneConnected = false,
+  phoneDevices = [],
+  phoneAdbAvailable = false,
+  activeVoiceId = "voice_1",
+  onSwitchVoice = () => {},
   user = null,
-  onSignOut,
-  onSignIn,
-  onForceSync,
-  onDeleteCloudData
+  onSignOut = async () => {},
+  onSignIn = async () => {},
+  onForceSync = async () => {},
+  onDeleteCloudData = async () => {}
 }: AIDashboardProps) {
   // Tabs inside dashboard
-  const [activeTab, setActiveTab] = useState<"system_telemetry" | "workflow_engine" | "memory_synchronizer" | "dev_studio" | "jarvis_agents" | "android_controller">("system_telemetry");
+  const [activeTab, setActiveTab] = useState<
+    | "chat_console"
+    | "live_voice"
+    | "notepad"
+    | "system_telemetry"
+    | "workflow_engine"
+    | "memory_synchronizer"
+    | "dev_studio"
+    | "jarvis_agents"
+    | "android_controller"
+  >("chat_console");
+
+  // Multi-modal Chat states
+  const [chatMessages, setChatMessages] = useState<Array<{role: "user" | "model", text: string, image?: string}>>([
+    { role: "model", text: "Greetings! I am **IRIS-AI**, your advanced personal AI operating system. I am online and highly responsive. Ask me anything, drag & drop a photo/file, or start a live voice protocol!" }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [pendingImageMime, setPendingImageMime] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Local Notepad states
+  const [notes, setNotes] = useState<Array<{id: string, title: string, content: string, date: string}>>(() => {
+    const saved = localStorage.getItem("iris_notes");
+    return saved ? JSON.parse(saved) : [
+      { id: "1", title: "IRIS Operating Manual", content: "# IRIS AI Workspace Notes\n\nThis is your offline, resilient workspace notes manager.\n\nYou can use this area to structure ideas, prepare code bases, or detail instructions. IRIS-AI can read, format, and deploy code written here directly.\n\n### Core System Command Triggers:\n- Click **Ask IRIS to Summarize** to request analysis\n- Click **Formulate / Format Code** to tidy and structuralise scripts", date: new Date().toLocaleDateString() }
+    ];
+  });
+  const [selectedNoteId, setSelectedNoteId] = useState<string>("1");
+
+  useEffect(() => {
+    localStorage.setItem("iris_notes", JSON.stringify(notes));
+  }, [notes]);
+
+  // Live Voice (Myraa) states
+  const [liveState, setLiveState] = useState<LiveState>("disconnected");
+  const [liveTranscription, setLiveTranscription] = useState<Array<{role: string, text: string}>>([]);
+  const [activeEmotion, setActiveEmotion] = useState<MyraaEmotion>("idle");
+  const [uiTheme, setUiTheme] = useState<"cosmic" | "cyberpunk" | "matrix" | "glassmorphic">("cosmic");
+  const [uiMode, setUiMode] = useState<"floating_core" | "2d" | "3d" | "glassmorphism" | "dashboard">("floating_core");
+  const [animationIntensity, setAnimationIntensity] = useState<number>(1.0);
+  const [powerUsage, setPowerUsage] = useState<"normal" | "low">("normal");
+
+  const audioSessionRef = useRef<MyraaAudioSession | null>(null);
+
+  // Auto scroll triggers
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const liveEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  useEffect(() => {
+    liveEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [liveTranscription]);
+
+  // Connect Gemini Live Session
+  const handleToggleLiveVoice = async () => {
+    if (liveState !== "disconnected") {
+      if (audioSessionRef.current) {
+        audioSessionRef.current.disconnect();
+        audioSessionRef.current = null;
+      }
+      setLiveState("disconnected");
+      setActiveEmotion("idle");
+      return;
+    }
+
+    try {
+      setLiveState("connecting");
+      setLiveTranscription([{ role: "system", text: "Initializing low-latency voice pipeline..." }]);
+
+      audioSessionRef.current = new MyraaAudioSession({
+        onStateChange: (state) => {
+          setLiveState(state);
+          if (state === "speaking") {
+            setActiveEmotion("happy");
+          } else if (state === "listening") {
+            setActiveEmotion("curious");
+          } else {
+            setActiveEmotion("idle");
+          }
+        },
+        onTranscription: (role, text) => {
+          setLiveTranscription(prev => [...prev, { role, text }]);
+          if (role === "model") {
+            setActiveEmotion("speaking");
+          } else {
+            setActiveEmotion("thinking");
+          }
+        },
+        onToolCall: (name, args, callback) => {
+          console.log("[Live Voice Tool Call]", name, args);
+          setLiveTranscription(prev => [...prev, { role: "system", text: `Triggered device tool: ${name}` }]);
+          callback({ success: true, message: `Successfully executed system instruction: ${name}` });
+        },
+        onError: (err) => {
+          console.error("[Live Voice Error]", err);
+          setLiveState("disconnected");
+          const errMsg = typeof err === "string" ? err : (err && typeof err === "object" && "message" in err ? (err as any).message : "Unknown issue");
+          setLiveTranscription(prev => [...prev, { role: "system", text: `Pipeline interrupted: ${errMsg}` }]);
+        }
+      });
+
+      await audioSessionRef.current.connect();
+    } catch (err: any) {
+      console.error("Live Audio Session Connection failed:", err);
+      setLiveState("disconnected");
+      setLiveTranscription(prev => [...prev, { role: "system", text: `Handshake failed: ${err.message}` }]);
+    }
+  };
+
+  // Clean up Live Voice session on component unmount
+  useEffect(() => {
+    return () => {
+      if (audioSessionRef.current) {
+        audioSessionRef.current.disconnect();
+      }
+    };
+  }, []);
+
+  // Send multimodal chat message
+  const handleSendChatMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!chatInput.trim() && !pendingImage) return;
+
+    const userMsgText = chatInput;
+    const userMsgImg = pendingImage;
+    
+    // Add User Message to local UI
+    setChatMessages(prev => [...prev, { role: "user", text: userMsgText, image: userMsgImg || undefined }]);
+    setChatInput("");
+    setPendingImage(null);
+    setPendingImageMime(null);
+    setChatLoading(true);
+
+    try {
+      // Build conversational history array (last 8 messages)
+      const history = chatMessages.slice(-8).map(m => ({
+        role: m.role,
+        text: m.text
+      }));
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMsgText,
+          image: userMsgImg ? userMsgImg.split(",")[1] : undefined,
+          mimeType: pendingImageMime || undefined,
+          history
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setChatMessages(prev => [...prev, { role: "model", text: data.text }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: "model", text: `⚠️ **System Error**: ${data.error || "Failed to formulate response."}` }]);
+      }
+    } catch (err: any) {
+      console.error("Chat failure:", err);
+      setChatMessages(prev => [...prev, { role: "model", text: `⚠️ **Network Handshake Failure**: ${err.message || "Unable to reach IRIS-AI server."}` }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Drag and Drop File Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileLoad(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileLoad = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Unsupported format. IRIS-AI supports high-fidelity photo analysis (JPEG, PNG, WEBP).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        setPendingImage(e.target.result as string);
+        setPendingImageMime(file.type);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Helper markdown renderer
+  const renderMarkdown = (text: string) => {
+    if (!text) return null;
+    const paragraphs = text.split("\n\n");
+    return (
+      <div className="flex flex-col gap-2 font-sans text-xs sm:text-sm leading-relaxed text-slate-300">
+        {paragraphs.map((p, idx) => {
+          if (p.trim().startsWith("- ") || p.trim().startsWith("* ")) {
+            const items = p.split("\n").filter(li => li.trim().startsWith("- ") || li.trim().startsWith("* "));
+            return (
+              <ul key={idx} className="list-disc pl-5 flex flex-col gap-1">
+                {items.map((item, i) => {
+                  const cleanItem = item.replace(/^[-*]\s+/, "");
+                  return <li key={i}>{parseInlineMarkdown(cleanItem)}</li>;
+                })}
+              </ul>
+            );
+          }
+          if (p.trim().startsWith("### ")) {
+            return <h4 key={idx} className="text-xs sm:text-sm font-bold text-cyan-400 mt-2">{parseInlineMarkdown(p.replace(/^###\s+/, ""))}</h4>;
+          }
+          if (p.trim().startsWith("## ")) {
+            return <h3 key={idx} className="text-sm sm:text-base font-bold text-purple-400 mt-3">{parseInlineMarkdown(p.replace(/^##\s+/, ""))}</h3>;
+          }
+          if (p.trim().startsWith("# ")) {
+            return <h2 key={idx} className="text-base sm:text-lg font-bold text-white mt-4">{parseInlineMarkdown(p.replace(/^#\s+/, ""))}</h2>;
+          }
+          return <p key={idx}>{parseInlineMarkdown(p)}</p>;
+        })}
+      </div>
+    );
+  };
+
+  const parseInlineMarkdown = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i} className="text-cyan-300 font-bold">{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return <code key={i} className="bg-white/10 px-1 py-0.5 rounded text-purple-300 font-mono text-[10px] sm:text-xs">{part.slice(1, -1)}</code>;
+      }
+      return part;
+    });
+  };
 
   // JARVIS Core Intelligence state variables
   const [searchAgentQuery, setSearchAgentQuery] = useState("");
@@ -1007,6 +1263,9 @@ export function AIDashboard({
       {/* SUB-TAB SELECTOR STRIP */}
       <div className="w-full max-w-7xl mx-auto flex border-b border-white/5 pb-2 mb-6 overflow-x-auto gap-2 shrink-0 no-scrollbar">
         {[
+          { id: "chat_console", label: "IRIS AI Chat Console", icon: MessageSquare },
+          { id: "live_voice", label: "Live Voice (Myraa)", icon: Mic },
+          { id: "notepad", label: "Local Notepad", icon: FileText },
           { id: "system_telemetry", label: "PC Hardware & Telemetry", icon: Cpu },
           { id: "jarvis_agents", label: "JARVIS Core Intelligence", icon: Shield },
           { id: "android_controller", label: "Mobile Link & USB Sync", icon: Smartphone },
@@ -1036,6 +1295,486 @@ export function AIDashboard({
       {/* MAIN DASHBOARD CONTENT AREA */}
       <div className="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start pb-8">
         
+        {/* CHAT CONSOLE TAB */}
+        {activeTab === "chat_console" && (
+          <div className="lg:col-span-12 w-full flex flex-col gap-4 min-h-[70vh] bg-slate-950/40 border border-white/10 rounded-3xl p-5 backdrop-blur-md">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="text-cyan-400 animate-pulse" size={20} />
+                <div>
+                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase">IRIS-AI SECURE CONSOLE</h2>
+                  <p className="text-[10px] font-mono text-slate-500 uppercase">Synchronized with Gemini-2.5-Flash cognitive matrix</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                </span>
+                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">ONLINE</span>
+              </div>
+            </div>
+
+            {/* Drag & drop overlay status */}
+            <div 
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`flex-1 flex flex-col gap-4 overflow-y-auto min-h-[45vh] max-h-[55vh] p-3 rounded-2xl transition border ${
+                dragActive ? "border-dashed border-cyan-400 bg-cyan-950/20" : "border-transparent"
+              }`}
+            >
+              {chatMessages.map((msg, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex flex-col max-w-[85%] sm:max-w-[70%] gap-1.5 p-4 rounded-3xl ${
+                    msg.role === "user" 
+                      ? "self-end bg-gradient-to-br from-cyan-600/30 to-purple-600/20 border border-cyan-500/20 rounded-tr-none text-slate-100" 
+                      : "self-start bg-slate-900/60 border border-white/5 rounded-tl-none text-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                    <span>{msg.role === "user" ? "USER DEVIATION" : "IRIS COGNITION"}</span>
+                    <span>•</span>
+                    <span>{new Date().toLocaleTimeString()}</span>
+                  </div>
+                  
+                  {msg.image && (
+                    <div className="relative max-w-xs rounded-xl overflow-hidden border border-white/10 mb-2">
+                      <img src={msg.image} className="w-full object-cover max-h-48" alt="Loaded detail" />
+                    </div>
+                  )}
+
+                  <div>{renderMarkdown(msg.text)}</div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="self-start flex items-center gap-2.5 p-4 bg-slate-900/40 border border-white/5 rounded-3xl rounded-tl-none text-slate-400">
+                  <div className="flex gap-1">
+                    <span className="h-1.5 w-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1.5 w-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="h-1.5 w-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                  <span className="text-xs font-mono uppercase tracking-widest text-slate-500">Formulating Response...</span>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Quick Prompts */}
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+              {[
+                { label: "Build a Todo App", text: "Create a complete React + Tailwind responsive todo application with beautiful layout animations and local persistence." },
+                { label: "Analyze Code Structure", text: "Explain the architecture of a Node.js full-stack developer server binding Express with WebSocket endpoints." },
+                { label: "Format Workspace Notes", text: "Summarize my active local workspace notes and suggest features we can build next." }
+              ].map((p, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setChatInput(p.text)}
+                  className="px-3 py-1.5 text-[10px] font-mono border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] hover:border-cyan-500/30 text-slate-400 hover:text-cyan-300 rounded-xl transition cursor-pointer"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSendChatMessage} className="flex gap-2 items-end pt-2">
+              <div className="flex-1 flex flex-col gap-2 bg-slate-900/80 border border-white/10 rounded-2xl p-2 focus-within:border-cyan-500/50 transition">
+                {pendingImage && (
+                  <div className="relative inline-block self-start p-1.5 bg-black/40 rounded-xl border border-white/10">
+                    <img src={pendingImage} className="h-14 w-14 object-cover rounded-lg" alt="Attachment" />
+                    <button
+                      type="button"
+                      onClick={() => { setPendingImage(null); setPendingImageMime(null); }}
+                      className="absolute -top-1.5 -right-1.5 p-1 bg-rose-600 hover:bg-rose-500 rounded-full text-white cursor-pointer transition"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-slate-500 hover:text-cyan-400 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] transition cursor-pointer"
+                    title="Upload image / photo"
+                  >
+                    <FileUp size={16} />
+                  </button>
+                  <input 
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileLoad(e.target.files[0]);
+                      }
+                    }}
+                    className="hidden"
+                    accept="image/*"
+                  />
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask IRIS-AI anything, drag in files, or use quick prompts..."
+                    className="flex-1 bg-transparent border-0 outline-none text-sm text-white placeholder-slate-500 py-1"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={chatLoading || (!chatInput.trim() && !pendingImage)}
+                className="py-3 px-5 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 text-slate-950 font-bold rounded-2xl text-xs font-mono uppercase tracking-widest transition cursor-pointer shrink-0"
+              >
+                Send
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* LIVE VOICE TAB */}
+        {activeTab === "live_voice" && (
+          <div className="lg:col-span-12 w-full grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[70vh]">
+            {/* Visualizer Frame (7 Cols) */}
+            <div className="md:col-span-7 flex flex-col gap-4 bg-slate-950/40 border border-white/10 rounded-3xl p-5 relative overflow-hidden backdrop-blur-md">
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <div>
+                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase">Myraa Duplex Audio Core</h2>
+                  <p className="text-[10px] font-mono text-slate-500 uppercase">Live emotional state synchronizer</p>
+                </div>
+                <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400 uppercase">
+                  <span>Theme: {uiTheme}</span>
+                  <span>•</span>
+                  <span>Mode: {uiMode}</span>
+                </div>
+              </div>
+
+              {/* The Holographic Core Canvas */}
+              <div className="flex-1 min-h-[380px] bg-black/40 rounded-2xl border border-white/5 flex items-center justify-center relative overflow-hidden group">
+                <MyraaCoreVisualizer
+                  session={audioSessionRef.current}
+                  state={liveState}
+                  themeColor={themeColor}
+                  activeEmotion={activeEmotion}
+                  characterState={
+                    liveState === "speaking" ? "talking" : liveState === "listening" ? "thinking" : "idle"
+                  }
+                  uiMode={uiMode}
+                  uiTheme={uiTheme}
+                  animationIntensity={animationIntensity}
+                  powerUsage={powerUsage}
+                />
+                
+                {/* Visual Glow Layer */}
+                <div className="absolute inset-0 bg-gradient-to-t from-cyan-950/20 to-transparent pointer-events-none" />
+                
+                {/* Floating telemetry HUD elements */}
+                <div className="absolute top-4 left-4 p-2 bg-black/60 rounded-xl border border-white/5 font-mono text-[9px] text-slate-400 leading-normal select-none pointer-events-none">
+                  <div className="text-cyan-400 font-bold uppercase mb-0.5">Mind Vector Coordinates</div>
+                  <div>Emotion index: {activeEmotion}</div>
+                  <div>Handshake jitter: 14ms</div>
+                  <div>Packet recovery: 100%</div>
+                </div>
+              </div>
+
+              {/* Central Activation Trigger */}
+              <div className="flex flex-col items-center gap-2 pt-2 border-t border-white/5">
+                <button
+                  onClick={handleToggleLiveVoice}
+                  className={`py-3.5 px-8 rounded-2xl font-mono text-xs font-bold uppercase tracking-widest transition-all duration-300 cursor-pointer shadow-lg ${
+                    liveState === "disconnected"
+                      ? "bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-slate-950 scale-100 hover:scale-[1.02]"
+                      : liveState === "connecting"
+                      ? "bg-slate-800 text-slate-400 cursor-wait"
+                      : "bg-red-600 hover:bg-red-500 text-white animate-pulse"
+                  }`}
+                >
+                  {liveState === "disconnected" && "🚀 AUTHORIZE LIVE AUDIO PIPELINE"}
+                  {liveState === "connecting" && "⚡ ESTABLISHING SSL HANDSHAKE..."}
+                  {liveState === "listening" && "🛑 INTERRUPTION GUARD: TAP TO DORMANT"}
+                  {liveState === "speaking" && "🛑 AI SPEAKING: TAP TO PAUSE CORE"}
+                </button>
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wide">
+                  {liveState === "disconnected" && "Requires standard computer microphone credentials"}
+                  {liveState === "connecting" && "Sourcing low-latency PCM buffers (16kHz in, 24kHz out)"}
+                  {liveState === "listening" && "Active listener. Speak naturally, IRIS will self-interrupt if you talk."}
+                  {liveState === "speaking" && "IRIS is responding via high-fidelity synthesized stream."}
+                </span>
+              </div>
+            </div>
+
+            {/* Custom Interactive HUD Panel (5 Cols) */}
+            <div className="md:col-span-5 flex flex-col gap-6">
+              {/* Parameters Slider & Theme selections */}
+              <div className="p-5 bg-slate-950/40 border border-white/10 rounded-3xl text-left flex flex-col gap-4 backdrop-blur-md">
+                <span className="text-[10px] font-mono tracking-widest text-cyan-400 font-bold uppercase">Audio State Vector Controllers</span>
+                
+                {/* Animation Intensity */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center text-xs font-mono text-slate-300">
+                    <span className="uppercase">Core Vibration Amplitude</span>
+                    <span>{animationIntensity.toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.5"
+                    step="0.1"
+                    value={animationIntensity}
+                    onChange={(e) => setAnimationIntensity(parseFloat(e.target.value))}
+                    className="w-full accent-cyan-400 bg-slate-900 rounded-lg cursor-pointer h-1.5"
+                  />
+                </div>
+
+                {/* Theme Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono text-slate-400 uppercase">Mind Wave theme style</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["cosmic", "cyberpunk", "matrix", "glassmorphic"] as const).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setUiTheme(t)}
+                        className={`py-1.5 px-3 rounded-xl border font-mono text-[10px] uppercase transition cursor-pointer ${
+                          uiTheme === t
+                            ? "border-cyan-400 bg-cyan-500/10 text-cyan-300 font-bold"
+                            : "border-white/5 bg-white/[0.01] text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mode Selector */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-mono text-slate-400 uppercase">Mental visualization form</label>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {[
+                      { id: "floating_core", label: "Holographic Neural Core" },
+                      { id: "2d", label: "Procedural 2D Waves Matrix" },
+                      { id: "3d", label: "Volumetric Orbital Vectors" },
+                      { id: "glassmorphism", label: "Glassmorphic Aura Grid" }
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setUiMode(m.id as any)}
+                        className={`py-1.5 px-3 rounded-xl border font-mono text-[10px] text-left uppercase transition cursor-pointer flex justify-between items-center ${
+                          uiMode === m.id
+                            ? "border-purple-400 bg-purple-500/10 text-purple-300 font-bold"
+                            : "border-white/5 bg-white/[0.01] text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        <span>{m.label}</span>
+                        {uiMode === m.id && <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrolled Real-Time Transcript HUD */}
+              <div className="flex-1 flex flex-col p-5 bg-slate-950/40 border border-white/10 rounded-3xl text-left gap-3 min-h-[180px] backdrop-blur-md">
+                <span className="text-[10px] font-mono tracking-widest text-purple-400 font-bold uppercase">Real-Time Voice Translation logs</span>
+                
+                <div className="flex-1 overflow-y-auto max-h-[220px] flex flex-col gap-2 bg-black/40 rounded-2xl border border-white/5 p-3.5 font-mono text-[10px] sm:text-xs">
+                  {liveTranscription.length === 0 ? (
+                    <div className="text-slate-600 text-center py-12 uppercase tracking-widest select-none">
+                      Pipeline Dormant. Speak to list voice coordinates...
+                    </div>
+                  ) : (
+                    liveTranscription.map((t, i) => (
+                      <div key={i} className={`flex flex-col gap-0.5 leading-relaxed ${
+                        t.role === "user" ? "text-cyan-400" : t.role === "model" ? "text-purple-400" : "text-slate-500"
+                      }`}>
+                        <span className="text-[8px] uppercase font-bold tracking-wider opacity-60">
+                          {t.role === "user" ? "[USER SPEECH]" : t.role === "model" ? "[IRIS SYNTH]" : "[SYSTEM LOG]"}
+                        </span>
+                        <span>{t.text}</span>
+                      </div>
+                    ))
+                  )}
+                  <div ref={liveEndRef} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* LOCAL NOTEPAD TAB */}
+        {activeTab === "notepad" && (
+          <div className="lg:col-span-12 w-full grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[70vh]">
+            {/* Notes List Sidebar (4 Cols) */}
+            <div className="md:col-span-4 p-5 bg-slate-950/40 border border-white/10 rounded-3xl flex flex-col gap-4 backdrop-blur-md text-left">
+              <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                <span className="text-[10px] font-mono tracking-widest text-cyan-400 font-bold uppercase">Local Workspace Notes</span>
+                <button
+                  onClick={() => {
+                    const newId = Date.now().toString();
+                    const newNote = {
+                      id: newId,
+                      title: `Draft Note #${notes.length + 1}`,
+                      content: `# Draft Note #${notes.length + 1}\n\nEnter content here...`,
+                      date: new Date().toLocaleDateString()
+                    };
+                    setNotes(prev => [...prev, newNote]);
+                    setSelectedNoteId(newId);
+                  }}
+                  className="p-1 px-2.5 bg-cyan-500 hover:bg-cyan-600 rounded-lg text-[9px] font-mono font-bold text-slate-950 transition cursor-pointer"
+                >
+                  + New Note
+                </button>
+              </div>
+
+              <div className="flex-1 flex flex-col gap-2 overflow-y-auto max-h-[50vh]">
+                {notes.map(note => (
+                  <div
+                    key={note.id}
+                    onClick={() => setSelectedNoteId(note.id)}
+                    className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                      selectedNoteId === note.id
+                        ? "border-cyan-400 bg-cyan-500/5"
+                        : "border-white/5 hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    <div className="font-mono text-xs font-bold text-slate-200 truncate">{note.title}</div>
+                    <div className="flex justify-between items-center text-[9px] font-mono text-slate-500 mt-1 uppercase">
+                      <span>{note.date}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (notes.length === 1) {
+                            alert("Cannot delete the last note. Create a new one first.");
+                            return;
+                          }
+                          const updated = notes.filter(n => n.id !== note.id);
+                          setNotes(updated);
+                          if (selectedNoteId === note.id) {
+                            setSelectedNoteId(updated[0].id);
+                          }
+                        }}
+                        className="text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Note Editor Pane (8 Cols) */}
+            <div className="md:col-span-8 p-5 bg-slate-950/40 border border-white/10 rounded-3xl flex flex-col gap-4 backdrop-blur-md text-left">
+              {notes.find(n => n.id === selectedNoteId) ? (
+                <>
+                  <div className="flex flex-col gap-1.5 border-b border-white/5 pb-3">
+                    <input
+                      type="text"
+                      value={notes.find(n => n.id === selectedNoteId)?.title || ""}
+                      onChange={(e) => {
+                        const updated = notes.map(n => {
+                          if (n.id === selectedNoteId) {
+                            return { ...n, title: e.target.value };
+                          }
+                          return n;
+                        });
+                        setNotes(updated);
+                      }}
+                      className="bg-transparent border-0 outline-none text-base font-bold text-white font-mono placeholder-slate-500"
+                      placeholder="Note Title"
+                    />
+                    <span className="text-[9px] font-mono text-slate-500 uppercase">Workspace file cache linked</span>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        const note = notes.find(n => n.id === selectedNoteId);
+                        if (note) {
+                          setChatInput(`Analyze this workspace note:\nTitle: ${note.title}\n\nContent:\n${note.content}`);
+                          setActiveTab("chat_console");
+                        }
+                      }}
+                      className="py-1.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-[9px] font-mono text-cyan-300 hover:text-cyan-200 transition cursor-pointer uppercase font-bold"
+                    >
+                      Ask IRIS to Summarize
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const note = notes.find(n => n.id === selectedNoteId);
+                        if (note) {
+                          try {
+                            const response = await fetch("/api/chat", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                message: `Standardise, format, structure, and improve this text using proper markdown. Tidy any code snippets. Return ONLY the improved result.\n\n${note.content}`
+                              })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                              const updated = notes.map(n => {
+                                if (n.id === selectedNoteId) {
+                                  return { ...n, content: data.text };
+                                }
+                                return n;
+                              });
+                              setNotes(updated);
+                              alert("Note formulated successfully!");
+                            } else {
+                              alert("Formulation error: " + data.error);
+                            }
+                          } catch (err: any) {
+                            alert("Connection failed: " + err.message);
+                          }
+                        }
+                      }}
+                      className="py-1.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-[9px] font-mono text-purple-300 hover:text-purple-200 transition cursor-pointer uppercase font-bold"
+                    >
+                      Formulate / Format Code
+                    </button>
+                    <button
+                      onClick={() => {
+                        const note = notes.find(n => n.id === selectedNoteId);
+                        if (note) {
+                          navigator.clipboard.writeText(note.content);
+                          alert("Saved copy to clipboard!");
+                        }
+                      }}
+                      className="py-1.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-[9px] font-mono text-slate-400 hover:text-white transition cursor-pointer uppercase font-bold ml-auto"
+                    >
+                      Copy to Clipboard
+                    </button>
+                  </div>
+
+                  <textarea
+                    value={notes.find(n => n.id === selectedNoteId)?.content || ""}
+                    onChange={(e) => {
+                      const updated = notes.map(n => {
+                        if (n.id === selectedNoteId) {
+                          return { ...n, content: e.target.value };
+                        }
+                        return n;
+                      });
+                      setNotes(updated);
+                    }}
+                    placeholder="Structure notes using markdown formatting..."
+                    className="flex-1 w-full bg-black/30 border border-white/5 rounded-2xl p-4 font-mono text-xs sm:text-sm text-slate-200 placeholder-slate-600 outline-none focus:border-cyan-500/30 transition resize-none min-h-[280px]"
+                  />
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+                  <FileText size={42} className="opacity-20 mb-2" />
+                  <span className="font-mono text-xs uppercase">No note selected</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* TAB 1: SYSTEM TELEMETRY */}
         {activeTab === "system_telemetry" && (
           <>

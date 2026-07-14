@@ -9,7 +9,7 @@ import {
   googleProvider
 } from "./lib/firebase";
 import { GoogleOnboarding } from "./components/GoogleOnboarding";
-import { MaxAIDashboard } from "./components/MaxAIDashboard";
+import { AIDashboard } from "./components/AIDashboard";
 import { DesktopCompanion } from "./components/DesktopCompanion";
 
 export default function App() {
@@ -111,15 +111,13 @@ export default function App() {
           }}
         />
       ) : (
-        <MaxAIDashboard
+        <AIDashboard
           user={user}
           onSignOut={handleSignOut}
-          onSignInGoogle={handleGoogleSignIn}
-          onMigrateData={migrateLocalData}
+          onSignIn={async () => { await handleGoogleSignIn(); }}
           pairedDevice={pairedDevice}
-          onDevicePaired={(device) => setPairedDevice(device)}
-          onDeviceDisconnected={() => setPairedDevice(null)}
           desktopBridgeToken={desktopBridgeToken}
+          onUpdateBridgeToken={(token) => setDesktopBridgeToken(token)}
         />
       )}
     </div>
