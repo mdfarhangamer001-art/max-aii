@@ -1,116 +1,53 @@
-name: Max-AI OS Release Suite
+# In your local repo:
+cd max-aii
+
+# Checkout the feature branch
+git checkout feature/tier-1-core-foundation
+git pull origin feature/tier-1-core-foundation
+
+# Create workflow directory
+mkdir -p .github/workflows
+
+# Create the file
+cat > .github/workflows/build-release.yml << 'EOF'
+name: 🚀 Auto Build & Release MAX-AII
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
 
 jobs:
-  build-and-release:
-    name: Compile, Package and Publish Release
+  validate:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout Codebase
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-          lfs: true
-
-      - name: Setup Node.js Environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
+          node-version: '18.x'
           cache: 'npm'
+      - run: npm ci
+      - run: npm run lint || true
 
-      - name: Install Project Dependencies
-        run: npm ci
-
-      - name: Ensure Icon is a Genuine PNG Format
-        run: |
-          if [ -f "assets/icon.png" ]; then
-            echo "Installing Pillow for image validation and conversion..."
-            python3 -m pip install pillow --disable-pip-version-check || true
-            python3 scripts/convert_icon.py
-          else
-            echo "WARNING: assets/icon.png not found, electron-builder might fail!"
-          fi
-
-      - name: Determine Next Version Tag
-        id: version_tag
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            TAG_NAME="${{ github.ref_name }}"
-          else
-            # Automated versioning bump on push to main
-            # Counts previous runs to generate an auto-incrementing tag like v1.0.12
-            TAG_NAME="v1.0.${{ github.run_number }}"
-          fi
-          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
-          
-          # Clean tag to get pure semver e.g., 1.0.12
-          CLEAN_VERSION="${TAG_NAME#v}"
-          echo "version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Update Version in Configuration Files
-        env:
-          APP_VERSION: ${{ steps.version_tag.outputs.version }}
-        run: |
-          echo "Updating configuration files to version: $APP_VERSION"
-          
-          # Update package.json version
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.version = process.env.APP_VERSION;
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2), 'utf8');
-          "
-          
-          # Update CURRENT_APP_VERSION in server.ts
-          node -e "
-            const fs = require('fs');
-            let content = fs.readFileSync('server.ts', 'utf8');
-            content = content.replace(/const CURRENT_APP_VERSION = \"[^\"]+\";/, 'const CURRENT_APP_VERSION = \"' + process.env.APP_VERSION + '\";');
-            fs.writeFileSync('server.ts', content, 'utf8');
-          "
-
-      - name: Compile and Build Application Bundles
-        run: npm run build
-
-      - name: Install Wine
-        run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y wine64 wine32 xvfb
-
-      - name: Generate Professional Windows Installer (.exe)
-        run: |
-          xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm run electron:build
-
-      - name: Publish Automatically to GitHub Releases
-        uses: softprops/action-gh-release@v2
+  build-windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          files: |
-            release/*.exe
-          draft: false
-          prerelease: false
-          tag_name: ${{ steps.version_tag.outputs.tag }}
-          name: Max-AI OS Release ${{ steps.version_tag.outputs.tag }}
-          body: |
-            # Max-AI OS (2080 Edition) - Release ${{ steps.version_tag.outputs.tag }}
+          node-version: '18.x'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: release/
+EOF
 
-            Welcome to the future of multi-agent cognitive operating systems.
-
-            ## Windows Setup Installer:
-            - 🚀 **`Max-AI OS Setup Installer.exe`**: Download this installer to automatically install the application to your Program Files directory, create elegant Desktop/Start Menu shortcuts, and configure a standard uninstaller!
-              - **No installation, extraction, or external web browser dependencies required.**
-              - Full secure desktop container with custom security header stripper allowing Google, YouTube, ChatGPT, and external links to load beautifully inside our React window frames.
-              - **Integrated PC Automation Brain**: Automated keyboard, mouse click, window scrolling, system volume, media control, lock states, notepad controls, and desktop capture actions executed securely via powershell system APIs.
-              - Standard uninstaller registered inside Windows Settings / Control Panel for safe removal.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+# Commit and push
+git add .github/workflows/build-release.yml
+git commit -m "ci: add build-release workflow"
+git push origin feature/tier-1-core-foundation
