@@ -48,7 +48,7 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.ts'),
       contextIsolation: true,
       nodeIntegration: false,
-      enableRemoteModule: false,
+      ,
     },
   });
 
