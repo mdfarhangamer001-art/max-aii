@@ -22,8 +22,21 @@ import fs from "fs/promises";
 import fsSync from "fs";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Robust ESM/CJS detection for file paths to support both dev execution (tsx/ESM) and prod bundling (esbuild/CJS)
+const isESM = typeof import.meta !== "undefined" && typeof import.meta.url !== "undefined";
+
+let resolvedFilename = "";
+let resolvedDirname = "";
+try {
+  // Use eval to safely access CommonJS module-wrapper variables if available, bypassing block TDZ checks
+  resolvedFilename = eval("__filename");
+  resolvedDirname = eval("__dirname");
+} catch (e) {
+  // Not in a CommonJS wrapper environment
+}
+
+const __filename = isESM ? fileURLToPath(import.meta.url) : resolvedFilename;
+const __dirname = isESM ? path.dirname(__filename) : resolvedDirname;
 import { WebSocketServer } from "ws";
 import { GoogleGenAI, Modality, Type, LiveServerMessage } from "@google/genai";
 import dotenv from "dotenv";
@@ -1315,7 +1328,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.32";
+  const CURRENT_APP_VERSION = "1.0.35";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
