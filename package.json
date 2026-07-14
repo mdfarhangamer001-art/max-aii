@@ -47,7 +47,7 @@
   "build": {
     "appId": "com.maxai.os",
     "productName": "Max-AI OS",
-    "asar": false,
+    "asar": true,
     "directories": {
       "output": "release"
     },
