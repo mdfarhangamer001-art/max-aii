@@ -15,7 +15,6 @@ jobs:
         with:
           node-version: '24.x'
           cache: 'npm'
-      # यहाँ npm ci की जगह npm install कर दिया है ताकि वर्ज़न मिसमैच होने पर एरर न आए
       - run: npm install
       - run: npm run lint || true
 
@@ -29,7 +28,6 @@ jobs:
         with:
           node-version: '24.x'
 
-      # यहाँ भी npm ci को हटाकर npm install कर दिया है ताकि बिल्ड फेल न हो
       - name: Install dependencies
         run: |
           npm install --legacy-peer-deps
@@ -44,7 +42,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: release/
+          path: dist/
 
   release:
     needs: build-windows
@@ -64,7 +62,7 @@ jobs:
       - name: Create and Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist-release/**exe/*
+          files: dist-release/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
