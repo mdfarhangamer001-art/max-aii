@@ -3,7 +3,6 @@ name: 🚀 Auto Build & Release MAX-AII
 on:
   push:
     branches: [ main ]
-    tags: [ 'v*' ]
   workflow_dispatch:
 
 jobs:
@@ -18,8 +17,28 @@ jobs:
       - run: npm install
       - run: npm run lint || true
 
-  build-windows:
+  # New Job: Automatically generates the version tag before building
+  create-tag:
     needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_tag: ${{ steps.tag_version.outputs.new_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump version and push tag
+        id: tag_version
+        uses: anothrNick/github-tag-action@1.71.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+
+  build-windows:
+    needs: create-tag
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,14 +58,28 @@ jobs:
       - name: Build Application
         run: npm run build
 
+      # Step to analyze and display the .exe file size
+      - name: Analyze EXE Size
+        id: size_check
+        shell: powershell
+        run: |
+          $exeFile = Get-ChildItem -Path dist\**\*.exe | Select-Object -First 1
+          if ($exeFile) {
+              $sizeMb = [math]::Round(($exeFile.Length / 1MB), 2)
+              echo "EXE_SIZE=$sizeMb MB" >> $env:GITHUB_ENV
+              echo "Found executable: $($exeFile.Name) ($sizeMb MB)"
+          } else {
+              echo "EXE_SIZE=Unknown" >> $env:GITHUB_ENV
+              echo "No .exe file found in dist/ directory!"
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: dist/
 
   release:
-    needs: build-windows
-    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [create-tag, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -62,8 +95,15 @@ jobs:
       - name: Create and Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.create-tag.outputs.new_tag }}
+          name: Release ${{ needs.create-tag.outputs.new_tag }}
+          body: |
+            Automated production build for version ${{ needs.create-tag.outputs.new_tag }}.
+            
+            **Asset Statistics:**
+            * Platform: Windows
+            * Format: Standalone `.exe`
           files: dist-release/**/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
+          
