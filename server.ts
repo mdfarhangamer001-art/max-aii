@@ -1219,6 +1219,43 @@ async function startServer() {
     }
   });
 
+  app.post("/api/memories/migrate", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "userId is required for migration." });
+      }
+      // Load local memories (userId is undefined/empty)
+      const localMemories = await loadMemories(undefined);
+      if (localMemories.length > 0) {
+        // Load existing cloud memories for this user
+        const cloudMemories = await loadMemories(userId);
+        // Merge them securely (avoid duplicates by text)
+        const merged = [...cloudMemories];
+        let migratedCount = 0;
+        for (const localM of localMemories) {
+          if (!merged.some(m => m.text.toLowerCase() === localM.text.toLowerCase())) {
+            merged.push({
+              ...localM,
+              id: Math.random().toString(36).substring(2, 11), // assign new ID
+              updatedAt: new Date().toISOString()
+            });
+            migratedCount++;
+          }
+        }
+        // Save merged to Firestore
+        await saveMemories(merged, userId);
+        console.log(`[Memory Migration] Migrated ${migratedCount} local memories to user ${userId}`);
+        res.json({ success: true, migratedCount });
+      } else {
+        res.json({ success: true, migratedCount: 0 });
+      }
+    } catch (e: any) {
+      console.error("[Memory Migration] Error migrating local memories:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
   const CURRENT_APP_VERSION = "1.0.10";
   let downloadInProgress = false;

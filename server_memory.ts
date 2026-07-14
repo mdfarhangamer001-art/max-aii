@@ -13,12 +13,17 @@ let firebaseApp: any = null;
 let firestoreDb: any = null;
 
 try {
-  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  let configPath = path.join(process.cwd(), "firebase-applet-config.json");
+  if (process.resourcesPath && fsSync.existsSync(path.join(process.resourcesPath, "firebase-applet-config.json"))) {
+    configPath = path.join(process.resourcesPath, "firebase-applet-config.json");
+  }
   if (fsSync.existsSync(configPath)) {
     const config = JSON.parse(fsSync.readFileSync(configPath, "utf-8"));
     firebaseApp = getApps().length === 0 ? initializeApp(config) : getApp();
     firestoreDb = getFirestore(firebaseApp, config.firestoreDatabaseId);
-    console.log("[Firebase Server] Firestore database initialized successfully with ID:", config.firestoreDatabaseId);
+    console.log("[Firebase Server] Firestore database initialized successfully with ID:", config.firestoreDatabaseId, "from path:", configPath);
+  } else {
+    console.warn("[Firebase Server] firebase-applet-config.json not found at standard paths. Looked in:", configPath);
   }
 } catch (err) {
   console.error("[Firebase Server] Failed to initialize Firestore:", err);

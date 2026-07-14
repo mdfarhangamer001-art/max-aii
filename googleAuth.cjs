@@ -31,9 +31,12 @@ function signInWithGoogleDesktop() {
     };
 
     try {
-      const configPath = path.join(__dirname, 'firebase-applet-config.json');
+      const { app } = require('electron');
+      const configPath = (app && app.isPackaged && process.resourcesPath)
+        ? path.join(process.resourcesPath, 'firebase-applet-config.json')
+        : path.join(__dirname, 'firebase-applet-config.json');
       if (!fs.existsSync(configPath)) {
-        throw new Error('firebase-applet-config.json not found in root.');
+        throw new Error('firebase-applet-config.json not found. Looked in: ' + configPath);
       }
       const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       const clientId = firebaseConfig.oAuthClientId;

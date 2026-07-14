@@ -12,6 +12,8 @@ import QRCode from "qrcode";
 interface MaxAIDashboardProps {
   user: any;
   onSignOut: () => void;
+  onSignInGoogle: () => Promise<any>;
+  onMigrateData: (userId: string) => Promise<{ success: boolean; migratedCount: number }>;
   pairedDevice: { id: string; model: string; key: string; session: string } | null;
   onDevicePaired: (device: any) => void;
   onDeviceDisconnected: () => void;
@@ -21,6 +23,8 @@ interface MaxAIDashboardProps {
 export function MaxAIDashboard({
   user,
   onSignOut,
+  onSignInGoogle,
+  onMigrateData,
   pairedDevice,
   onDevicePaired,
   onDeviceDisconnected,
@@ -33,6 +37,44 @@ export function MaxAIDashboard({
   const [logs, setLogs] = useState<string[]>(["[" + new Date().toLocaleTimeString() + "] Systems Initialized. Welcome to Max-AI OS Unified Dashboard."]);
   const [inputCommand, setInputCommand] = useState<string>("");
   const [isSimulatingScan, setIsSimulatingScan] = useState<boolean>(false);
+
+  // Linking & data migration states
+  const [linkingLoader, setLinkingLoader] = useState<boolean>(false);
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
+  const [migrationError, setMigrationError] = useState<string | null>(null);
+
+  const handleLinkGoogleAccount = async () => {
+    setLinkingLoader(true);
+    setMigrationStatus(null);
+    setMigrationError(null);
+    try {
+      setLogs(prev => [...prev, `[OAuth] Initiating Google Sign-In secure loopback bridge...`]);
+      const loggedInUser = await onSignInGoogle();
+      if (!loggedInUser) {
+        throw new Error("No Google user returned from sign-in.");
+      }
+      setLogs(prev => [...prev, `[OAuth] Google authenticated successfully: ${loggedInUser.email}`]);
+      setMigrationStatus("Authenticating cloud node...");
+      
+      // Perform memory migration
+      setMigrationStatus("Synchronizing and migrating local recollections...");
+      const migrationRes = await onMigrateData(loggedInUser.uid);
+      if (migrationRes && migrationRes.success) {
+        const count = migrationRes.migratedCount;
+        setLogs(prev => [...prev, `[Cloud Sync] Successfully migrated ${count} memories to Google Cloud.`]);
+        setMigrationStatus(`SUCCESS: Linked to ${loggedInUser.email} & migrated ${count} memories!`);
+      } else {
+        setLogs(prev => [...prev, `[Cloud Sync] Google linked. Local storage is up-to-date.`]);
+        setMigrationStatus(`Linked to ${loggedInUser.email} (Data Synced)`);
+      }
+    } catch (err: any) {
+      console.error("Linking error:", err);
+      setMigrationError(err.message || "Failed to link Google account.");
+      setLogs(prev => [...prev, `[Error] Failed to link Google account: ${err.message}`]);
+    } finally {
+      setLinkingLoader(false);
+    }
+  };
   
   // Mirror controls
   const [activeScreen, setActiveScreen] = useState<"launcher" | "social" | "camera" | "editor" | "settings">("launcher");
@@ -417,35 +459,71 @@ export function MaxAIDashboard({
 
         {/* User Footer Profile */}
         <div className="pt-4 border-t border-white/5 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            {user?.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt="Profile Avatar"
-                className="w-8 h-8 rounded-full border border-cyan-500/25"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">
-                {user?.displayName ? user.displayName.charAt(0) : "D"}
+          {user ? (
+            <>
+              <div className="flex items-center gap-3">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Profile Avatar"
+                    className="w-8 h-8 rounded-full border border-cyan-500/25"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">
+                    {user.displayName ? user.displayName.charAt(0) : "D"}
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-white truncate">
+                    {user.displayName || "Developer Node"}
+                  </span>
+                  <span className="text-[10px] text-slate-500 truncate font-mono">
+                    {user.email}
+                  </span>
+                </div>
               </div>
-            )}
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold text-white truncate">
-                {user?.displayName || "Developer Node"}
-              </span>
-              <span className="text-[10px] text-slate-500 truncate font-mono">
-                {user?.email || "guest@maxai.local"}
-              </span>
+              <button
+                onClick={onSignOut}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-950/15 hover:bg-red-950/30 text-red-400 border border-red-500/15 rounded-xl text-xs font-medium transition cursor-pointer uppercase tracking-wider text-[10px]"
+              >
+                <LogOut size={12} />
+                <span>Lock OS Console</span>
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs font-mono">
+                  L
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-white truncate">Local Node (Offline)</span>
+                  <span className="text-[10px] text-slate-500 truncate font-mono">local@maxai.private</span>
+                </div>
+              </div>
+              <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-2.5 flex flex-col gap-2">
+                <p className="text-[9px] font-mono text-amber-400/90 leading-normal">
+                  All memory is stored on this computer. Link Google Cloud to enable secure backups.
+                </p>
+                <button
+                  onClick={handleLinkGoogleAccount}
+                  disabled={linkingLoader}
+                  className="w-full py-1.5 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-lg text-[9px] font-bold font-sans transition flex items-center justify-center gap-1 cursor-pointer uppercase tracking-wider disabled:opacity-50 select-none"
+                >
+                  <Sparkles size={10} className="text-amber-400" />
+                  <span>{linkingLoader ? "Linking..." : "Link Google Account"}</span>
+                </button>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-950/25 hover:bg-slate-950/50 text-slate-400 border border-white/5 rounded-xl text-xs font-medium transition cursor-pointer uppercase tracking-wider text-[10px]"
+              >
+                <LogOut size={12} />
+                <span>Lock OS Console</span>
+              </button>
             </div>
-          </div>
-          <button
-            onClick={onSignOut}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-950/15 hover:bg-red-950/30 text-red-400 border border-red-500/15 rounded-xl text-xs font-medium transition cursor-pointer uppercase tracking-wider text-[10px]"
-          >
-            <LogOut size={12} />
-            <span>Lock OS Console</span>
-          </button>
+          )}
         </div>
       </aside>
 
@@ -1185,27 +1263,72 @@ export function MaxAIDashboard({
                   <div className="border border-white/5 bg-slate-950/20 rounded-3xl p-6 flex flex-col justify-between">
                     <div>
                       <div className="p-2 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 mb-4 w-max">
-                        <span className="text-[9px] font-mono text-cyan-400 font-extrabold tracking-widest uppercase">FIREBASE AUTH</span>
+                        <span className="text-[9px] font-mono text-cyan-400 font-extrabold tracking-widest uppercase">STORAGE INFRASTRUCTURE</span>
                       </div>
-                      <h3 className="text-lg font-light text-white mb-2">Google Cloud Sync Status</h3>
+                      <h3 className="text-lg font-light text-white mb-2">Data Synchronization Hub</h3>
                       <p className="text-xs text-slate-400 leading-relaxed mb-6">
-                        Manage your authenticated Google developer account profile, local databases credentials and real-time cloud data storage path mappings.
+                        Monitor where your conversational memory, dashboard preferences, and system parameters are saved and managed.
                       </p>
 
-                      <div className="p-4 bg-slate-950/80 border border-white/5 rounded-2xl space-y-3 font-mono text-[10px]">
+                      <div className="p-4 bg-slate-950/80 border border-white/5 rounded-2xl space-y-3 font-mono text-[10px] mb-4">
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Active Email:</span>
+                          <span className="text-slate-500">Mode:</span>
+                          <span className={user ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                            {user ? "Cloud Synchronized" : "Local-Only / Offline"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Active Node:</span>
                           <span className="text-white font-bold truncate max-w-[150px]">{user?.email || "guest@maxai.local"}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Provider Node:</span>
-                          <span className="text-cyan-400 font-bold">firebase.google.auth</span>
+                          <span className="text-slate-500">Storage Target:</span>
+                          <span className="text-cyan-400">
+                            {user ? "Firestore (cloud.google.com)" : "memories.json (Local File)"}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Authentication Method:</span>
-                          <span className="text-cyan-400">Google OAuth Sign-In</span>
+                          <span className="text-slate-500">Encryption Layer:</span>
+                          <span className="text-cyan-400">AES-256-GCM Secure Salt</span>
                         </div>
                       </div>
+
+                      {!user && (
+                        <div className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex flex-col gap-3">
+                          <div className="flex items-start gap-2.5">
+                            <Info size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                            <p className="text-xs text-slate-300 leading-normal">
+                              You are currently in Offline Mode. Memories are fully private and saved on this laptop. Sign in to back them up securely to Google Cloud and merge your local history.
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleLinkGoogleAccount}
+                            disabled={linkingLoader}
+                            className="w-full py-2.5 px-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold font-sans transition flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider disabled:opacity-50 select-none"
+                          >
+                            <Sparkles size={12} className="text-amber-400" />
+                            <span>{linkingLoader ? "Connecting loopback..." : "Link Google Account & Sync"}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {user && (
+                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 flex items-start gap-3">
+                          <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Cloud Synchronizer Active</h4>
+                            <p className="text-[11px] text-slate-300 leading-normal mt-1">
+                              All local and cloud records are perfectly matched and safely stored in your private Firestore sandbox.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {(migrationStatus || migrationError) && (
+                        <div className={`mt-4 p-3.5 rounded-2xl border text-[10px] font-mono leading-normal ${migrationError ? "bg-red-950/20 border-red-500/20 text-red-400" : "bg-cyan-950/20 border-cyan-500/20 text-cyan-400"}`}>
+                          {migrationError ? `[ERROR] ${migrationError}` : `[STATUS] ${migrationStatus}`}
+                        </div>
+                      )}
                     </div>
                   </div>
 

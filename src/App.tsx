@@ -2,7 +2,11 @@ import { useState, useEffect } from "react";
 import { 
   auth, 
   onAuthStateChanged,
-  signOut
+  signOut,
+  signInWithPopup,
+  signInWithCredential,
+  GoogleAuthProvider,
+  googleProvider
 } from "./lib/firebase";
 import { GoogleOnboarding } from "./components/GoogleOnboarding";
 import { MaxAIDashboard } from "./components/MaxAIDashboard";
@@ -49,6 +53,37 @@ export default function App() {
     );
   }
 
+  const handleGoogleSignIn = async () => {
+    const isElectron = typeof window !== "undefined" && window.navigator.userAgent.toLowerCase().includes("electron");
+    if (isElectron) {
+      const { ipcRenderer } = (window as any).require("electron");
+      const { idToken } = await ipcRenderer.invoke("google-signin");
+      if (!idToken) {
+        throw new Error("No authorization token was returned from Google Desktop Sign-In.");
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      const result = await signInWithCredential(auth, credential);
+      return result.user;
+    } else {
+      const result = await signInWithPopup(auth, googleProvider);
+      return result.user;
+    }
+  };
+
+  const migrateLocalData = async (newUserId: string) => {
+    try {
+      const res = await fetch("/api/memories/migrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: newUserId })
+      });
+      return await res.json();
+    } catch (err) {
+      console.error("Migration error:", err);
+      return { success: false, error: err };
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -65,7 +100,8 @@ export default function App() {
     <div id="maxai-operating-desktop" className="w-full h-screen bg-[#020205] text-white">
       {onboardingChoice === null && user === null ? (
         <GoogleOnboarding
-          onSignedIn={() => {
+          onSignedIn={(u) => {
+            setUser(u);
             localStorage.setItem("onboarding_choice", "google");
             setOnboardingChoice("google");
           }}
@@ -78,6 +114,8 @@ export default function App() {
         <MaxAIDashboard
           user={user}
           onSignOut={handleSignOut}
+          onSignInGoogle={handleGoogleSignIn}
+          onMigrateData={migrateLocalData}
           pairedDevice={pairedDevice}
           onDevicePaired={(device) => setPairedDevice(device)}
           onDeviceDisconnected={() => setPairedDevice(null)}

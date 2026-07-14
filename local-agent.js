@@ -368,16 +368,48 @@ app.post("/api/action", async (req, res) => {
         
         logAndBroadcast(`Typing text into input: "${text}"`, "info");
         
-        // Optimization: Ensure active element is explicitly focused first
-        await page.evaluate(() => {
+        // Optimized direct injection with native DOM event firing for instant JS framework updates
+        await page.evaluate((txt) => {
           const activeEl = document.activeElement;
-          if (activeEl && typeof activeEl.focus === 'function') {
-            activeEl.focus();
+          if (activeEl) {
+            let handled = false;
+            if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') {
+              const start = activeEl.selectionStart || 0;
+              const end = activeEl.selectionEnd || 0;
+              const val = activeEl.value || "";
+              activeEl.value = val.substring(0, start) + txt + val.substring(end);
+              activeEl.selectionStart = activeEl.selectionEnd = start + txt.length;
+              handled = true;
+            } else if (activeEl.isContentEditable) {
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const textNode = document.createTextNode(txt);
+                range.insertNode(textNode);
+                range.setStartAfter(textNode);
+                range.setEndAfter(textNode);
+                selection.removeAllRanges();
+                selection.addRange(range);
+              } else {
+                activeEl.innerText = (activeEl.innerText || "") + txt;
+              }
+              handled = true;
+            }
+            if (handled) {
+              activeEl.dispatchEvent(new Event('input', { bubbles: true }));
+              activeEl.dispatchEvent(new Event('change', { bubbles: true }));
+              activeEl.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+              activeEl.dispatchEvent(new KeyboardEvent('keypress', { bubbles: true }));
+              activeEl.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+            }
           }
-        });
+        }, text);
 
-        // Use Playwright insertText for maximum speed and perfect event dispatching
-        await page.keyboard.insertText(text);
+        // Fallback or double-layer reinforcement using native keypress for complete event loop sync
+        try {
+          await page.keyboard.insertText(text);
+        } catch (e) {}
         
         logAndBroadcast(`Finished typing text.`, "success");
         return res.json({ result: `Typed text "${text}" inside the active element.` });
