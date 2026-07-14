@@ -38,7 +38,8 @@ import {
   Mic,
   FileText,
   FileUp,
-  File
+  File,
+  KeyRound
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Memory, MemoryCategory } from "../lib/memoryTypes";
@@ -361,6 +362,7 @@ export function AIDashboard({
     | "chat_console"
     | "live_voice"
     | "notepad"
+    | "api_keys"
     | "system_telemetry"
     | "workflow_engine"
     | "memory_synchronizer"
@@ -369,9 +371,122 @@ export function AIDashboard({
     | "android_controller"
   >("chat_console");
 
+  // API Keys state variables
+  const [apiKeys, setApiKeys] = useState<Record<string, { configured: boolean; enabled: boolean; masked: string }>>({
+    openai: { configured: false, enabled: false, masked: "" },
+    gemini: { configured: false, enabled: false, masked: "" },
+    anthropic: { configured: false, enabled: false, masked: "" },
+    groq: { configured: false, enabled: false, masked: "" }
+  });
+  const [newKeys, setNewKeys] = useState<Record<string, string>>({
+    openai: "",
+    gemini: "",
+    anthropic: "",
+    groq: ""
+  });
+  const [validationStatus, setValidationStatus] = useState<Record<string, "idle" | "loading" | "success" | "error">>({
+    openai: "idle",
+    gemini: "idle",
+    anthropic: "idle",
+    groq: "idle"
+  });
+  const [validationError, setValidationError] = useState<Record<string, string>>({
+    openai: "",
+    gemini: "",
+    anthropic: "",
+    groq: ""
+  });
+  const [keysLoading, setKeysLoading] = useState(false);
+
+  const loadKeysFromServer = async () => {
+    try {
+      setKeysLoading(true);
+      const res = await fetch("/api/keys");
+      const data = await res.json();
+      if (data && !data.error) {
+        setApiKeys(data);
+      }
+    } catch (err) {
+      console.error("Failed to load API keys from server:", err);
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  const saveKeyToServer = async (provider: string) => {
+    try {
+      const keyVal = newKeys[provider];
+      const enabled = apiKeys[provider]?.enabled ?? true;
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, key: keyVal, enabled })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewKeys(prev => ({ ...prev, [provider]: "" }));
+        await loadKeysFromServer();
+        alert(`API key for ${provider.toUpperCase()} saved and encrypted successfully.`);
+      } else {
+        alert(`Error saving key: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Network error saving key: ${err.message}`);
+    }
+  };
+
+  const toggleKeyEnabled = async (provider: string, currentEnabled: boolean) => {
+    try {
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, enabled: !currentEnabled })
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadKeysFromServer();
+      } else {
+        alert(`Error toggling key: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Network error toggling key: ${err.message}`);
+    }
+  };
+
+  const validateKeyOnServer = async (provider: string) => {
+    const keyToValidate = newKeys[provider] || "";
+    if (!keyToValidate) {
+      alert(`Please type a new API key for ${provider.toUpperCase()} to test it.`);
+      return;
+    }
+    setValidationStatus(prev => ({ ...prev, [provider]: "loading" }));
+    setValidationError(prev => ({ ...prev, [provider]: "" }));
+    try {
+      const res = await fetch("/api/keys/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, key: keyToValidate })
+      });
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        setValidationStatus(prev => ({ ...prev, [provider]: "success" }));
+      } else {
+        setValidationStatus(prev => ({ ...prev, [provider]: "error" }));
+        setValidationError(prev => ({ ...prev, [provider]: data.error || "Validation failed." }));
+      }
+    } catch (err: any) {
+      setValidationStatus(prev => ({ ...prev, [provider]: "error" }));
+      setValidationError(prev => ({ ...prev, [provider]: err.message || "Network error." }));
+    }
+  };
+
+  useEffect(() => {
+    loadKeysFromServer();
+  }, []);
+
   // Multi-modal Chat states
   const [chatMessages, setChatMessages] = useState<Array<{role: "user" | "model", text: string, image?: string}>>([
-    { role: "model", text: "Greetings! I am **IRIS-AI**, your advanced personal AI operating system. I am online and highly responsive. Ask me anything, drag & drop a photo/file, or start a live voice protocol!" }
+    { role: "model", text: "Greetings! I am **Max AI**, your advanced personal AI operating system. I am online and highly responsive. Ask me anything, drag & drop a photo/file, or start a live voice protocol!" }
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -382,15 +497,15 @@ export function AIDashboard({
 
   // Local Notepad states
   const [notes, setNotes] = useState<Array<{id: string, title: string, content: string, date: string}>>(() => {
-    const saved = localStorage.getItem("iris_notes");
+    const saved = localStorage.getItem("max_notes");
     return saved ? JSON.parse(saved) : [
-      { id: "1", title: "IRIS Operating Manual", content: "# IRIS AI Workspace Notes\n\nThis is your offline, resilient workspace notes manager.\n\nYou can use this area to structure ideas, prepare code bases, or detail instructions. IRIS-AI can read, format, and deploy code written here directly.\n\n### Core System Command Triggers:\n- Click **Ask IRIS to Summarize** to request analysis\n- Click **Formulate / Format Code** to tidy and structuralise scripts", date: new Date().toLocaleDateString() }
+      { id: "1", title: "Max AI Operating Manual", content: "# Max AI Workspace Notes\n\nThis is your offline, resilient workspace notes manager.\n\nYou can use this area to structure ideas, prepare code bases, or detail instructions. Max AI can read, format, and deploy code written here directly.\n\n### Core System Command Triggers:\n- Click **Ask Max AI to Summarize** to request analysis\n- Click **Formulate / Format Code** to tidy and structuralise scripts", date: new Date().toLocaleDateString() }
     ];
   });
   const [selectedNoteId, setSelectedNoteId] = useState<string>("1");
 
   useEffect(() => {
-    localStorage.setItem("iris_notes", JSON.stringify(notes));
+    localStorage.setItem("max_notes", JSON.stringify(notes));
   }, [notes]);
 
   // Live Voice (Myraa) states
@@ -522,7 +637,7 @@ export function AIDashboard({
       }
     } catch (err: any) {
       console.error("Chat failure:", err);
-      setChatMessages(prev => [...prev, { role: "model", text: `⚠️ **Network Handshake Failure**: ${err.message || "Unable to reach IRIS-AI server."}` }]);
+      setChatMessages(prev => [...prev, { role: "model", text: `⚠️ **Network Handshake Failure**: ${err.message || "Unable to reach Max AI server."}` }]);
     } finally {
       setChatLoading(false);
     }
@@ -549,7 +664,7 @@ export function AIDashboard({
 
   const handleFileLoad = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Unsupported format. IRIS-AI supports high-fidelity photo analysis (JPEG, PNG, WEBP).");
+      alert("Unsupported format. Max AI supports high-fidelity photo analysis (JPEG, PNG, WEBP).");
       return;
     }
     const reader = new FileReader();
@@ -1262,10 +1377,11 @@ export function AIDashboard({
 
       {/* SUB-TAB SELECTOR STRIP */}
       <div className="w-full max-w-7xl mx-auto flex border-b border-white/5 pb-2 mb-6 overflow-x-auto gap-2 shrink-0 no-scrollbar">
-        {[
-          { id: "chat_console", label: "IRIS AI Chat Console", icon: MessageSquare },
+         {[
+          { id: "chat_console", label: "Max AI Chat Console", icon: MessageSquare },
           { id: "live_voice", label: "Live Voice (Myraa)", icon: Mic },
           { id: "notepad", label: "Local Notepad", icon: FileText },
+          { id: "api_keys", label: "Secure API Keys", icon: KeyRound },
           { id: "system_telemetry", label: "PC Hardware & Telemetry", icon: Cpu },
           { id: "jarvis_agents", label: "JARVIS Core Intelligence", icon: Shield },
           { id: "android_controller", label: "Mobile Link & USB Sync", icon: Smartphone },
@@ -1303,7 +1419,7 @@ export function AIDashboard({
               <div className="flex items-center gap-2">
                 <MessageSquare className="text-cyan-400 animate-pulse" size={20} />
                 <div>
-                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase">IRIS-AI SECURE CONSOLE</h2>
+                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase">MAX AI SECURE CONSOLE</h2>
                   <p className="text-[10px] font-mono text-slate-500 uppercase">Synchronized with Gemini-2.5-Flash cognitive matrix</p>
                 </div>
               </div>
@@ -1335,7 +1451,7 @@ export function AIDashboard({
                   }`}
                 >
                   <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase tracking-wider">
-                    <span>{msg.role === "user" ? "USER DEVIATION" : "IRIS COGNITION"}</span>
+                    <span>{msg.role === "user" ? "USER DEVIATION" : "MAX AI COGNITION"}</span>
                     <span>•</span>
                     <span>{new Date().toLocaleTimeString()}</span>
                   </div>
@@ -1418,7 +1534,7 @@ export function AIDashboard({
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask IRIS-AI anything, drag in files, or use quick prompts..."
+                    placeholder="Ask Max AI anything, drag in files, or use quick prompts..."
                     className="flex-1 bg-transparent border-0 outline-none text-sm text-white placeholder-slate-500 py-1"
                   />
                 </div>
@@ -1499,8 +1615,8 @@ export function AIDashboard({
                 <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wide">
                   {liveState === "disconnected" && "Requires standard computer microphone credentials"}
                   {liveState === "connecting" && "Sourcing low-latency PCM buffers (16kHz in, 24kHz out)"}
-                  {liveState === "listening" && "Active listener. Speak naturally, IRIS will self-interrupt if you talk."}
-                  {liveState === "speaking" && "IRIS is responding via high-fidelity synthesized stream."}
+                  {liveState === "listening" && "Active listener. Speak naturally, Max AI will self-interrupt if you talk."}
+                  {liveState === "speaking" && "Max AI is responding via high-fidelity synthesized stream."}
                 </span>
               </div>
             </div>
@@ -1590,7 +1706,7 @@ export function AIDashboard({
                         t.role === "user" ? "text-cyan-400" : t.role === "model" ? "text-purple-400" : "text-slate-500"
                       }`}>
                         <span className="text-[8px] uppercase font-bold tracking-wider opacity-60">
-                          {t.role === "user" ? "[USER SPEECH]" : t.role === "model" ? "[IRIS SYNTH]" : "[SYSTEM LOG]"}
+                          {t.role === "user" ? "[USER SPEECH]" : t.role === "model" ? "[MAX AI SYNTH]" : "[SYSTEM LOG]"}
                         </span>
                         <span>{t.text}</span>
                       </div>
@@ -1700,7 +1816,7 @@ export function AIDashboard({
                       }}
                       className="py-1.5 px-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-[9px] font-mono text-cyan-300 hover:text-cyan-200 transition cursor-pointer uppercase font-bold"
                     >
-                      Ask IRIS to Summarize
+                      Ask Max AI to Summarize
                     </button>
                     <button
                       onClick={async () => {
@@ -1771,6 +1887,143 @@ export function AIDashboard({
                   <span className="font-mono text-xs uppercase">No note selected</span>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* SECURE API KEYS TAB */}
+        {activeTab === "api_keys" && (
+          <div className="lg:col-span-12 w-full flex flex-col gap-6 min-h-[70vh] bg-slate-950/40 border border-white/10 rounded-3xl p-6 backdrop-blur-md text-left">
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-white/5 pb-3">
+              <div className="flex items-center gap-2">
+                <KeyRound className="text-cyan-400 animate-pulse" size={20} />
+                <div>
+                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase font-sans">MAX AI SECURE KEY VAULT</h2>
+                  <p className="text-[10px] font-mono text-slate-500 uppercase">AES-256 encrypted operational database parameters</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold">CRYPTO SECURED</span>
+              </div>
+            </div>
+
+            {/* Main Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { id: "gemini", label: "Google Gemini API", desc: "Powers low-latency multi-modal chat consoles and live voice pipeline sync (gemini-2.5-flash)", placeholder: "AIzaSy..." },
+                { id: "powerful", label: "Max AI Powerful Processing Key", desc: "Powers high-performance model orchestration, real-time context streaming, and advanced task chains (gemini-2.5-pro)", placeholder: "AIzaSy..." },
+                { id: "openai", label: "OpenAI GPT Platform", desc: "Powers secondary deep analysis, code scans, and assistant cascade endpoints (gpt-4o-mini)", placeholder: "sk-proj-..." },
+                { id: "anthropic", label: "Anthropic Claude", desc: "Powers heavy modular refactoring, developer studio, and strict compiler reasoning (claude-3-5-sonnet)", placeholder: "sk-ant-..." },
+                { id: "groq", label: "Groq LPU Accelerators", desc: "Powers instant high-speed terminal completions, sub-agent cascade loops (llama-3.1-70b)", placeholder: "gsk_..." }
+              ].map(provider => {
+                const info = apiKeys[provider.id] || { configured: false, enabled: false, masked: "" };
+                const typedValue = newKeys[provider.id] || "";
+                const valStatus = validationStatus[provider.id] || "idle";
+                const valErr = validationError[provider.id] || "";
+
+                return (
+                  <div key={provider.id} className="p-5 rounded-2xl bg-slate-900/40 border border-white/5 flex flex-col gap-4 hover:border-white/10 transition relative overflow-hidden group">
+                    {/* Background subtle glowing pattern */}
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/[0.01] rounded-full blur-2xl group-hover:bg-cyan-500/[0.03] transition-all duration-300 pointer-events-none" />
+                    
+                    {/* Card Title block */}
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider">{provider.label}</span>
+                        <span className="text-[9px] text-slate-500 font-sans leading-relaxed">{provider.desc}</span>
+                      </div>
+                      
+                      {/* Badge status */}
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase tracking-widest font-bold shrink-0 ${
+                        info.configured 
+                          ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/20" 
+                          : "bg-amber-950/20 text-amber-500 border border-amber-500/10"
+                      }`}>
+                        {info.configured ? "CONFIGURED" : "MISSING"}
+                      </span>
+                    </div>
+
+                    {/* Masked status */}
+                    {info.configured && (
+                      <div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex justify-between items-center text-[10px] font-mono text-slate-400 leading-none">
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          <span>Active: {info.masked}</span>
+                        </div>
+                        
+                        {/* Toggle switch */}
+                        <button
+                          onClick={() => toggleKeyEnabled(provider.id, info.enabled)}
+                          className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase transition-all duration-200 cursor-pointer ${
+                            info.enabled
+                              ? "bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+                              : "bg-slate-800 text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {info.enabled ? "ACTIVE (ENABLED)" : "DORMANT (DISABLED)"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* New Key Input and Action triggers */}
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <label className="text-[9px] font-mono text-slate-500 uppercase">Set New {provider.id.toUpperCase()} SECRET KEY</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={typedValue}
+                          onChange={(e) => setNewKeys(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                          placeholder={provider.placeholder}
+                          className="flex-1 bg-black/40 border border-white/10 focus:border-cyan-500/40 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 outline-none font-mono transition"
+                        />
+                        <button
+                          onClick={() => saveKeyToServer(provider.id)}
+                          disabled={!typedValue.trim()}
+                          className="px-4 py-1.5 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-30 disabled:hover:bg-cyan-500 text-slate-950 font-mono text-[10px] font-bold uppercase tracking-wider rounded-xl transition cursor-pointer select-none"
+                        >
+                          Save
+                        </button>
+                      </div>
+
+                      {/* Validation trigger */}
+                      <div className="flex justify-between items-center mt-1 pt-1 border-t border-white/[0.03]">
+                        <button
+                          onClick={() => validateKeyOnServer(provider.id)}
+                          disabled={!typedValue.trim()}
+                          className="text-[9px] font-mono text-purple-300 hover:text-purple-200 hover:underline disabled:opacity-30 transition cursor-pointer animate-pulse"
+                        >
+                          {valStatus === "loading" ? "⚡ Executing server verification request..." : "Verify typed API key structure"}
+                        </button>
+
+                        <div className="text-[9px] font-mono uppercase tracking-widest font-bold">
+                          {valStatus === "success" && <span className="text-emerald-400">✓ KEY VALID</span>}
+                          {valStatus === "error" && <span className="text-rose-400">✗ INVALID KEY</span>}
+                        </div>
+                      </div>
+
+                      {/* Error text if validation fails */}
+                      {valStatus === "error" && valErr && (
+                        <div className="p-2.5 rounded-xl bg-rose-950/20 border border-rose-500/25 text-rose-300 font-mono text-[9px] leading-relaxed">
+                          Validation Error details: {valErr}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Info notice box */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex gap-3 text-slate-400 font-mono text-[10px] sm:text-xs leading-relaxed">
+              <span className="text-cyan-400 font-bold shrink-0">ℹ INFO:</span>
+              <div>
+                We support completely separate keys for Google Gemini, OpenAI, Anthropic, and Groq. Each key is loaded as a sandboxed variable for model requests. The live chat uses <strong>gemini-2.5-flash</strong> using your Gemini API key (or our fallback developer proxy if none provided).
+              </div>
             </div>
           </div>
         )}

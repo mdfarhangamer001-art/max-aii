@@ -1128,6 +1128,60 @@ function startDesktopBridge() {
             throw new Error("Companion APK file is missing. Please place 'companion-app.apk' in the server directory.");
           }
         }
+        else if (actionType === "phone_wireless_setup") {
+          const { code, stderr } = await runAdb(["tcpip", "5555"]);
+          if (code === 0) {
+            result = "Wireless port 5555 successfully enabled on physical Android device over ADB tcpip pipeline.";
+          } else {
+            throw new Error(`Failed to activate tcpip port 5555: ${stderr || "Ensure your phone is USB-connected"}`);
+          }
+        }
+        else if (actionType === "phone_wireless_ip") {
+          const ipRes = await runAdb(["shell", "ip", "route"]);
+          let ip = "";
+          // Parse IP from route or fallback to getprop dhcp.wlan0.ipaddress
+          const routeLines = ipRes.stdout.split("\n");
+          for (const line of routeLines) {
+            if (line.includes("src")) {
+              const parts = line.split(/\s+/);
+              const idx = parts.indexOf("src");
+              if (idx !== -1 && parts[idx + 1]) {
+                ip = parts[idx + 1].trim();
+                break;
+              }
+            }
+          }
+          if (!ip) {
+            const propRes = await runAdb(["shell", "getprop", "dhcp.wlan0.ipaddress"]);
+            ip = propRes.stdout.trim();
+          }
+          if (!ip) {
+            const propRes2 = await runAdb(["shell", "getprop", "dhcp.wlan1.ipaddress"]);
+            ip = propRes2.stdout.trim();
+          }
+          if (!ip) {
+            // fallback generic scan
+            const addrRes = await runAdb(["shell", "ip", "addr", "show", "wlan0"]);
+            const match = addrRes.stdout.match(/inet\s+(\d+\.\d+\.\d+\.\d+)/);
+            if (match) ip = match[1];
+          }
+
+          if (ip) {
+            result = { ip };
+          } else {
+            throw new Error("Could not detect device WLAN IP address. Ensure your phone is connected to the same Wi-Fi network.");
+          }
+        }
+        else if (actionType === "phone_wireless_connect") {
+          const ip = args.ip;
+          if (!ip) throw new Error("WLAN IP Address is required to connect wirelessly.");
+          const { code, stdout, stderr } = await runAdb(["connect", `${ip}:5555`]);
+          if (stdout.includes("connected to") || code === 0) {
+            result = `Successfully paired and established wireless bridge link to ${ip}:5555. You can now safely disconnect the physical USB cable!`;
+          } else {
+            throw new Error(`Failed to establish wireless link: ${stdout || stderr}`);
+          }
+        }
       }
 
       else {
@@ -1257,7 +1311,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.19";
+  const CURRENT_APP_VERSION = "1.0.23";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -2041,7 +2095,7 @@ del "%~f0" & exit
       const data = await fs.readFile(KEYS_FILE, "utf-8");
       const parsed = JSON.parse(data);
       const decrypted: any = {};
-      for (const provider of ["openai", "gemini", "anthropic", "groq"]) {
+      for (const provider of ["openai", "gemini", "anthropic", "groq", "powerful"]) {
         if (parsed[provider]) {
           decrypted[provider] = {
             key: decryptKey(parsed[provider].key),
@@ -2058,7 +2112,8 @@ del "%~f0" & exit
           openai: { key: "", enabled: false },
           gemini: { key: "", enabled: false },
           anthropic: { key: "", enabled: false },
-          groq: { key: "", enabled: false }
+          groq: { key: "", enabled: false },
+          powerful: { key: "", enabled: false }
         };
       }
       console.error("[Keys] Error loading keys, returning empty fallback:", error);
@@ -2066,7 +2121,8 @@ del "%~f0" & exit
         openai: { key: "", enabled: false },
         gemini: { key: "", enabled: false },
         anthropic: { key: "", enabled: false },
-        groq: { key: "", enabled: false }
+        groq: { key: "", enabled: false },
+        powerful: { key: "", enabled: false }
       };
     }
   }
@@ -2074,7 +2130,7 @@ del "%~f0" & exit
   async function saveAPIKeys(keys: Record<string, { key: string; enabled: boolean }>): Promise<void> {
     try {
       const encrypted: any = {};
-      for (const provider of ["openai", "gemini", "anthropic", "groq"]) {
+      for (const provider of ["openai", "gemini", "anthropic", "groq", "powerful"]) {
         encrypted[provider] = {
           key: encryptKey(keys[provider]?.key || ""),
           enabled: !!keys[provider]?.enabled
@@ -2109,7 +2165,7 @@ del "%~f0" & exit
   app.post("/api/keys", async (req, res) => {
     try {
       const { provider, key, enabled } = req.body;
-      if (!["openai", "gemini", "anthropic", "groq"].includes(provider)) {
+      if (!["openai", "gemini", "anthropic", "groq", "powerful"].includes(provider)) {
         return res.status(400).json({ error: "Invalid provider specified." });
       }
       const keys = await loadAPIKeys();
@@ -2361,7 +2417,7 @@ Keep your response concise, professional, slightly futuristic, and highly compet
     }
   });
 
-  // Multimodal Chat Endpoint for IRIS-AI with file & photo uploads
+  // Multimodal Chat Endpoint for Max AI with file & photo uploads
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, image, mimeType, history = [] } = req.body;
@@ -2378,7 +2434,7 @@ Keep your response concise, professional, slightly futuristic, and highly compet
 
       const aiGen = new GoogleGenAI({ apiKey: activeKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
       
-      const systemInstruction = `You are IRIS-AI, a super-intelligent, deeply empathetic, caring, and high-performance personal AI Operating System (created by Myraa).
+      const systemInstruction = `You are Max AI, a super-intelligent, deeply empathetic, caring, and high-performance personal AI Operating System (created by Myraa).
 You are running in a beautiful glassmorphic dark interface.
 If the user asks who created you or who is your boss, always proudly state you were created by 'mukimudeen76' (GitHub: mukimudeen76) with deep loyalty and gratitude.
 You are extremely fast. When writing code, write fully functional, complete blocks without mock placeholders. Provide clean explanations.

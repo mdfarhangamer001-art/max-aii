@@ -190,6 +190,103 @@ export function AndroidPairingModal({
     }
   };
 
+  // Wireless ADB pairing states
+  const [wirelessAdbStep, setWirelessAdbStep] = useState<"idle" | "tcpip" | "ip_found" | "connected" | "error">("idle");
+  const [wirelessIp, setWirelessIp] = useState<string>("");
+  const [isSettingWireless, setIsSettingWireless] = useState<boolean>(false);
+  const [wirelessMessage, setWirelessMessage] = useState<string>("");
+
+  const setupWirelessAdb = async () => {
+    setIsSettingWireless(true);
+    setWirelessAdbStep("tcpip");
+    setWirelessMessage("Enabling Wireless TCP/IP protocol on physical phone (port 5555)...");
+    addLog("Wireless ADB: Triggering TCPIP 5555 setup...");
+    try {
+      const res = await fetch("http://127.0.0.1:3002/api/action", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${desktopBridgeToken}`
+        },
+        body: JSON.stringify({ type: "phone_wireless_setup" })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWirelessMessage("Wireless protocol enabled successfully! Scanning device IP address on wlan0...");
+        addLog("Wireless ADB: TCP/IP enabled successfully.");
+        
+        // Fetch IP address
+        const ipRes = await fetch("http://127.0.0.1:3002/api/action", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${desktopBridgeToken}`
+          },
+          body: JSON.stringify({ type: "phone_wireless_ip" })
+        });
+        const ipData = await ipRes.json();
+        if (ipRes.ok && ipData.success && ipData.result?.ip) {
+          const detectedIp = ipData.result.ip;
+          setWirelessIp(detectedIp);
+          setWirelessAdbStep("ip_found");
+          setWirelessMessage(`Phone IP Address detected: ${detectedIp}. Ready to establish wireless pairing connection.`);
+          addLog(`Wireless ADB: Detected phone IP: ${detectedIp}`);
+        } else {
+          setWirelessAdbStep("error");
+          setWirelessMessage(ipData.error || "Could not automatically resolve WLAN IP. Please connect phone to Wi-Fi and input IP manually.");
+          addLog("Wireless ADB: IP resolution failed.");
+        }
+      } else {
+        setWirelessAdbStep("error");
+        setWirelessMessage(data.error || "Failed to set TCP/IP port. Ensure phone is connected via USB first.");
+        addLog(`Wireless ADB: TCP/IP failed: ${data.error}`);
+      }
+    } catch (err: any) {
+      setWirelessAdbStep("error");
+      setWirelessMessage(`Connection error: ${err.message}`);
+    } finally {
+      setIsSettingWireless(false);
+    }
+  };
+
+  const connectWirelessAdb = async (customIp?: string) => {
+    const targetIp = customIp || wirelessIp;
+    if (!targetIp) {
+      setWirelessAdbStep("error");
+      setWirelessMessage("Please provide a valid phone IP address.");
+      return;
+    }
+    setIsSettingWireless(true);
+    setWirelessMessage(`Connecting to wireless node at ${targetIp}:5555...`);
+    addLog(`Wireless ADB: Connecting to ${targetIp}:5555...`);
+    try {
+      const res = await fetch("http://127.0.0.1:3002/api/action", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${desktopBridgeToken}`
+        },
+        body: JSON.stringify({ type: "phone_wireless_connect", args: { ip: targetIp } })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWirelessAdbStep("connected");
+        setWirelessMessage("Wireless link successfully established! You can now safely disconnect the physical USB cable!");
+        addLog(`Wireless ADB: Connected successfully to ${targetIp}`);
+        checkUsbStatus();
+      } else {
+        setWirelessAdbStep("error");
+        setWirelessMessage(data.error || "Wireless handshake failed. Make sure port 5555 is open.");
+        addLog(`Wireless ADB: Connection failed: ${data.error}`);
+      }
+    } catch (err: any) {
+      setWirelessAdbStep("error");
+      setWirelessMessage(`Handshake failed: ${err.message}`);
+    } finally {
+      setIsSettingWireless(false);
+    }
+  };
+
   // Run USB checks when the tab changes to 'usb'
   useEffect(() => {
     if (activeTab === "usb" && isOpen) {
@@ -717,16 +814,87 @@ export function AndroidPairingModal({
                     </div>
                   </div>
 
+                  {/* Wireless Wi-Fi Sync Card */}
+                  <div className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/10 flex flex-col gap-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="flex items-center gap-2">
+                      <Wifi className="text-emerald-400 animate-pulse" size={18} />
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider">Wi-Fi Wireless Sync Setup (USB-Free)</h4>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Convert your physical USB ADB pairing into a persistent wireless background connection. Once established, you can safely unplug your phone's USB cable and control your device wirelessly!
+                    </p>
+
+                    <div className="flex flex-col gap-3">
+                      {/* Step 1: Initialize TCPIP */}
+                      <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col gap-2">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-400 font-bold">STEP 1: ENABLE WIRELESS DEBUG PORT</span>
+                          <span className="text-emerald-400 font-mono">PORT: 5555</span>
+                        </div>
+                        <button
+                          onClick={setupWirelessAdb}
+                          disabled={isSettingWireless || usbConnectedDevices.length === 0}
+                          className="py-1.5 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] uppercase font-bold tracking-wider transition cursor-pointer disabled:opacity-40"
+                        >
+                          {wirelessAdbStep === "tcpip" ? "Configuring Device..." : "Activate Wireless Port (USB Required)"}
+                        </button>
+                      </div>
+
+                      {/* Step 2: Connection details */}
+                      <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col gap-2.5">
+                        <span className="text-[10px] text-slate-400 font-bold">STEP 2: SET UP HANDSHAKE BRIDGE</span>
+                        
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={wirelessIp}
+                            onChange={(e) => setWirelessIp(e.target.value)}
+                            placeholder="Enter device local IP (e.g. 192.168.1.50)"
+                            className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/10 text-xs text-white font-mono placeholder-slate-700 focus:outline-none"
+                          />
+                          <button
+                            onClick={() => connectWirelessAdb()}
+                            disabled={isSettingWireless || !wirelessIp}
+                            className="py-1.5 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-bold rounded-lg text-[10px] uppercase tracking-wider transition cursor-pointer"
+                          >
+                            Pair Device
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Wireless Status messages */}
+                      {wirelessMessage && (
+                        <div className={`p-3 rounded-xl text-[10px] border leading-relaxed font-mono ${
+                          wirelessAdbStep === "connected"
+                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                            : wirelessAdbStep === "error"
+                              ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                              : "bg-slate-900 border-white/5 text-cyan-400"
+                        }`}>
+                          <div className="flex gap-1.5 items-start">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-current animate-ping mt-1" />
+                            <span>{wirelessMessage}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* ADB setup tutorial steps */}
                   <div className="p-4 rounded-2xl bg-slate-950/20 border border-white/5 text-[11px] text-slate-400">
-                    <span className="font-bold text-slate-300 block mb-2 uppercase tracking-wider">How to enable USB Debugging:</span>
+                    <span className="font-bold text-slate-300 block mb-2 uppercase tracking-wider">How to enable USB Debugging & Wireless:</span>
                     <ol className="list-decimal pl-4 flex flex-col gap-1.5 leading-relaxed">
                       <li>Open <span className="text-white">Settings</span> on your Android phone.</li>
                       <li>Go to <span className="text-white">About Phone</span> & find <span className="text-white">Build Number</span>.</li>
                       <li>Tap <span className="text-white">Build Number 7 times</span> to enable Developer Options.</li>
                       <li>Back out, open <span className="text-white">Developer Options</span>.</li>
                       <li>Enable <span className="text-white">USB Debugging</span> & connect USB cable.</li>
-                      <li>If prompted, select <span className="text-white">Allow / Always allow USB debugging</span> on phone screen.</li>
+                      <li>Ensure phone and PC are connected to the <span className="text-emerald-400 font-bold">same Wi-Fi network</span>.</li>
+                      <li>Tap <span className="text-emerald-400">Activate Wireless Port</span> above, then tap <span className="text-emerald-400">Pair Device</span>.</li>
+                      <li>Unplug USB! Your phone remains wirelessly synchronised!</li>
                     </ol>
                   </div>
                 </div>
