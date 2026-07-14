@@ -42,7 +42,7 @@ OMNI_API_KEY="sk-or-v1-YourOmniKeyHere..."
 OMNI_API_URL="https://api.openrouter.ai/v1"
 
 # Target Omni model name of your choice
-OMNI_MODEL_NAME="google/gemini-2.5-flash"
+OMNI_MODEL_NAME="google/gemini-3.5-flash"
 ```
 
 The system will read these keys natively in the background and encrypt transaction messages before syncing them.

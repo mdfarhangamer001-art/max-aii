@@ -20,6 +20,10 @@ import http from "http";
 import path from "path";
 import fs from "fs/promises";
 import fsSync from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { WebSocketServer } from "ws";
 import { GoogleGenAI, Modality, Type, LiveServerMessage } from "@google/genai";
 import dotenv from "dotenv";
@@ -1311,7 +1315,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.23";
+  const CURRENT_APP_VERSION = "1.0.32";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -2143,6 +2147,82 @@ del "%~f0" & exit
     }
   }
 
+  /**
+   * Executes a generateContent call with a robust retry mechanism (exponential backoff)
+   * and automatic model fallback chain if the primary model is overloaded (503),
+   * rate-limited (429), or unavailable.
+   */
+  async function generateContentWithFallback(
+    ai: any,
+    params: any,
+    fallbackModels: string[] = ["gemini-3.5-flash", "gemini-3.1-flash-lite"]
+  ): Promise<any> {
+    const maxRetries = 3;
+    let currentModelIndex = 0;
+    
+    // Clean target models array to ensure unique values and no undefined/empty values
+    const modelsToTry = [
+      params.model,
+      ...fallbackModels
+    ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
+    console.log(`[Gemini Helper] Starting content generation. Model chain: ${modelsToTry.join(" -> ")}`);
+
+    let lastError: any = null;
+
+    while (currentModelIndex < modelsToTry.length) {
+      const activeModel = modelsToTry[currentModelIndex];
+      let attempt = 0;
+
+      while (attempt <= maxRetries) {
+        try {
+          console.log(`[Gemini Helper] Attempting generateContent (model: ${activeModel}, attempt: ${attempt + 1}/${maxRetries + 1})`);
+          
+          const callParams = {
+            ...params,
+            model: activeModel
+          };
+
+          const response = await ai.models.generateContent(callParams);
+          return response;
+        } catch (err: any) {
+          lastError = err;
+          attempt++;
+          const errorMessage = err.message || "";
+          const status = err.status || (err.error && err.error.code) || 0;
+          
+          const isOverloadedOrRateLimited = 
+            status === 503 || 
+            status === 429 || 
+            errorMessage.includes("demand") || 
+            errorMessage.includes("overloaded") || 
+            errorMessage.includes("UNAVAILABLE") || 
+            errorMessage.includes("ResourceExhausted") || 
+            errorMessage.includes("try again later");
+
+          console.warn(`[Gemini Helper] Call failed for model ${activeModel} (status: ${status}, attempt ${attempt}): ${errorMessage}`);
+
+          if (isOverloadedOrRateLimited && attempt <= maxRetries) {
+            const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+            console.log(`[Gemini Helper] Retrying in ${Math.round(delay)}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          } else {
+            // If we run out of retries, or it's not a retryable error, break and try the next model
+            break;
+          }
+        }
+      }
+
+      // Try the next model in the fallback chain
+      currentModelIndex++;
+      if (currentModelIndex < modelsToTry.length) {
+        console.warn(`[Gemini Helper] Falling back to next model: ${modelsToTry[currentModelIndex]}`);
+      }
+    }
+
+    throw lastError || new Error("All model configuration and fallback strategies failed to generate content.");
+  }
+
   // API Key Endpoints
   app.get("/api/keys", async (req, res) => {
     try {
@@ -2193,8 +2273,8 @@ del "%~f0" & exit
       console.log(`[Keys Validation] Testing ${provider} API Key operational validity...`);
       if (provider === "gemini") {
         const aiTest = new GoogleGenAI({ apiKey: testKey });
-        await aiTest.models.generateContent({
-          model: "gemini-2.5-flash",
+        await generateContentWithFallback(aiTest, {
+          model: "gemini-3.5-flash",
           contents: "Hello, confirm system operational status in 3 words."
         });
       } else if (provider === "openai") {
@@ -2278,13 +2358,21 @@ del "%~f0" & exit
       if (keys[selectedProvider] && keys[selectedProvider].enabled && keys[selectedProvider].key) {
         activeKey = keys[selectedProvider].key;
       } else if (selectedProvider === "gemini") {
-        activeKey = process.env.GEMINI_API_KEY || "";
+        activeKey = process.env.GEMINI_API_KEY || 
+                    (keys.gemini?.enabled ? keys.gemini?.key : "") || 
+                    keys.gemini?.key || 
+                    (keys.powerful?.enabled ? keys.powerful?.key : "") || 
+                    keys.powerful?.key;
       }
 
       // Fallback chain: if requested provider is not enabled/available, fall back to gemini default key
       if (!activeKey) {
         selectedProvider = "gemini";
-        activeKey = process.env.GEMINI_API_KEY || "";
+        activeKey = process.env.GEMINI_API_KEY || 
+                    (keys.gemini?.enabled ? keys.gemini?.key : "") || 
+                    keys.gemini?.key || 
+                    (keys.powerful?.enabled ? keys.powerful?.key : "") || 
+                    keys.powerful?.key;
       }
 
       // Determine specialized agent to route to
@@ -2331,8 +2419,8 @@ Keep your response concise, professional, slightly futuristic, and highly compet
 
       if (selectedProvider === "gemini" && activeKey) {
         const aiGen = new GoogleGenAI({ apiKey: activeKey });
-        const gemResponse = await aiGen.models.generateContent({
-          model: "gemini-2.5-flash",
+        const gemResponse = await generateContentWithFallback(aiGen, {
+          model: "gemini-3.5-flash",
           contents: prompt,
           config: { systemInstruction: systemPrompt }
         });
@@ -2427,7 +2515,12 @@ Keep your response concise, professional, slightly futuristic, and highly compet
 
       console.log(`[Chat API] Received chat request (multimodal=${!!image})`);
 
-      const activeKey = process.env.GEMINI_API_KEY || "";
+      const keys = await loadAPIKeys();
+      const activeKey = process.env.GEMINI_API_KEY || 
+                        (keys.gemini?.enabled ? keys.gemini?.key : "") || 
+                        keys.gemini?.key || 
+                        (keys.powerful?.enabled ? keys.powerful?.key : "") || 
+                        keys.powerful?.key;
       if (!activeKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on this server." });
       }
@@ -2471,8 +2564,8 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
         parts
       });
 
-      const response = await aiGen.models.generateContent({
-        model: "gemini-2.5-flash",
+      const response = await generateContentWithFallback(aiGen, {
+        model: "gemini-3.5-flash",
         contents,
         config: { systemInstruction }
       });
@@ -2846,7 +2939,11 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
     
     // Dynamically retrieve stored key from secured api_keys.json database if env var is missing
     const keys = await loadAPIKeys();
-    const apiKey = process.env.GEMINI_API_KEY || (keys.gemini?.enabled ? keys.gemini?.key : "") || keys.gemini?.key;
+    const apiKey = process.env.GEMINI_API_KEY || 
+                   (keys.gemini?.enabled ? keys.gemini?.key : "") || 
+                   keys.gemini?.key || 
+                   (keys.powerful?.enabled ? keys.powerful?.key : "") || 
+                   keys.powerful?.key;
     
     if (!apiKey) {
       console.error("GEMINI_API_KEY is not defined in environment or api_keys.json.");
@@ -2946,8 +3043,31 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
       let dialogueHistory: { role: string; text: string }[] = [];
       let currentModelResponseText = "";
       
-      const session = await ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+      // Define a custom helper to try connecting using a fallback model chain if the first choice fails
+      const connectWithModelFallback = async (optionsBuilder: (modelName: string) => any) => {
+        const models = [
+          "gemini-3.1-flash-live-preview",
+          "gemini-2.0-flash-exp",
+          "gemini-2.0-flash-live-preview-04-09",
+          "gemini-2.0-flash"
+        ];
+        let lastError = null;
+        for (const model of models) {
+          try {
+            console.log(`[Gemini Live] Attempting connection with model: ${model}...`);
+            const s = await ai.live.connect(optionsBuilder(model));
+            console.log(`[Gemini Live] Successfully established session using model: ${model}`);
+            return s;
+          } catch (err: any) {
+            console.warn(`[Gemini Live] Failed connecting with model ${model}:`, err.message || err);
+            lastError = err;
+          }
+        }
+        throw lastError || new Error("All Live API fallback models failed to connect.");
+      };
+
+      const session = await connectWithModelFallback((modelName) => ({
+        model: modelName,
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -3540,7 +3660,7 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
             clientWs.send(JSON.stringify({ type: "status", status: "session_closed" }));
           }
         }
-      });
+      }));
       
       clientWs.send(JSON.stringify({ type: "status", status: "connected" }));
       

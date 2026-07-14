@@ -1915,8 +1915,8 @@ export function AIDashboard({
             {/* Main Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
-                { id: "gemini", label: "Google Gemini API", desc: "Powers low-latency multi-modal chat consoles and live voice pipeline sync (gemini-2.5-flash)", placeholder: "AIzaSy..." },
-                { id: "powerful", label: "Max AI Powerful Processing Key", desc: "Powers high-performance model orchestration, real-time context streaming, and advanced task chains (gemini-2.5-pro)", placeholder: "AIzaSy..." },
+                { id: "gemini", label: "Google Gemini API", desc: "Powers low-latency multi-modal chat consoles and live voice pipeline sync (gemini-3.5-flash)", placeholder: "AIzaSy..." },
+                { id: "powerful", label: "Max AI Powerful Processing Key", desc: "Powers high-performance model orchestration, real-time context streaming, and advanced task chains (gemini-3.1-pro-preview)", placeholder: "AIzaSy..." },
                 { id: "openai", label: "OpenAI GPT Platform", desc: "Powers secondary deep analysis, code scans, and assistant cascade endpoints (gpt-4o-mini)", placeholder: "sk-proj-..." },
                 { id: "anthropic", label: "Anthropic Claude", desc: "Powers heavy modular refactoring, developer studio, and strict compiler reasoning (claude-3-5-sonnet)", placeholder: "sk-ant-..." },
                 { id: "groq", label: "Groq LPU Accelerators", desc: "Powers instant high-speed terminal completions, sub-agent cascade loops (llama-3.1-70b)", placeholder: "gsk_..." }
@@ -2022,7 +2022,7 @@ export function AIDashboard({
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex gap-3 text-slate-400 font-mono text-[10px] sm:text-xs leading-relaxed">
               <span className="text-cyan-400 font-bold shrink-0">ℹ INFO:</span>
               <div>
-                We support completely separate keys for Google Gemini, OpenAI, Anthropic, and Groq. Each key is loaded as a sandboxed variable for model requests. The live chat uses <strong>gemini-2.5-flash</strong> using your Gemini API key (or our fallback developer proxy if none provided).
+                We support completely separate keys for Google Gemini, OpenAI, Anthropic, and Groq. Each key is loaded as a sandboxed variable for model requests. The live chat uses <strong>gemini-3.5-flash</strong> using your Gemini API key (or our fallback developer proxy if none provided).
               </div>
             </div>
           </div>

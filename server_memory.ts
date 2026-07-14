@@ -164,6 +164,82 @@ export function formatSystemInstructionsWithMemories(baseInstruction: string, me
   return baseInstruction + memoryBlock;
 }
 
+/**
+ * Executes a generateContent call with a robust retry mechanism (exponential backoff)
+ * and automatic model fallback chain if the primary model is overloaded (503),
+ * rate-limited (429), or unavailable.
+ */
+async function generateContentWithFallback(
+  ai: any,
+  params: any,
+  fallbackModels: string[] = ["gemini-3.5-flash", "gemini-3.1-flash-lite"]
+): Promise<any> {
+  const maxRetries = 3;
+  let currentModelIndex = 0;
+  
+  // Clean target models array to ensure unique values and no undefined/empty values
+  const modelsToTry = [
+    params.model,
+    ...fallbackModels
+  ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
+  console.log(`[Memory Gemini Helper] Starting content generation. Model chain: ${modelsToTry.join(" -> ")}`);
+
+  let lastError: any = null;
+
+  while (currentModelIndex < modelsToTry.length) {
+    const activeModel = modelsToTry[currentModelIndex];
+    let attempt = 0;
+
+    while (attempt <= maxRetries) {
+      try {
+        console.log(`[Memory Gemini Helper] Attempting generateContent (model: ${activeModel}, attempt: ${attempt + 1}/${maxRetries + 1})`);
+        
+        const callParams = {
+          ...params,
+          model: activeModel
+        };
+
+        const response = await ai.models.generateContent(callParams);
+        return response;
+      } catch (err: any) {
+        lastError = err;
+        attempt++;
+        const errorMessage = err.message || "";
+        const status = err.status || (err.error && err.error.code) || 0;
+        
+        const isOverloadedOrRateLimited = 
+          status === 503 || 
+          status === 429 || 
+          errorMessage.includes("demand") || 
+          errorMessage.includes("overloaded") || 
+          errorMessage.includes("UNAVAILABLE") || 
+          errorMessage.includes("ResourceExhausted") || 
+          errorMessage.includes("try again later");
+
+        console.warn(`[Memory Gemini Helper] Call failed for model ${activeModel} (status: ${status}, attempt ${attempt}): ${errorMessage}`);
+
+        if (isOverloadedOrRateLimited && attempt <= maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+          console.log(`[Memory Gemini Helper] Retrying in ${Math.round(delay)}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } else {
+          // If we run out of retries, or it's not a retryable error, break and try the next model
+          break;
+        }
+      }
+    }
+
+    // Try the next model in the fallback chain
+    currentModelIndex++;
+    if (currentModelIndex < modelsToTry.length) {
+      console.warn(`[Memory Gemini Helper] Falling back to next model: ${modelsToTry[currentModelIndex]}`);
+    }
+  }
+
+  throw lastError || new Error("All model configuration and fallback strategies failed to generate content.");
+}
+
 // Background memory consolidation queue lock
 let isConsolidating = false;
 
@@ -220,7 +296,7 @@ ${dialogueContext}
 - TEXT STYLE: Express the memories as clean, concise, third-person declarative summaries (e.g., 'The user is building a tech project named Marya AI.', 'The user loves playing GTA 6.', 'The user enjoys technical and fast-paced styling explanations.'). Do not include conversational filler, quotes, or timestamps.
 - ID: For ADD, leave blank. For UPDATE or REMOVE, provide the exact 'id' from the "Current user memories" list.`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithFallback(ai, {
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
