@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js release",
     "lint": "tsc --noEmit",
-    "electron:build": "npm run build && cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" electron-builder build --win --publish never"
+    "electron:build": "npm run build && cross-env NODE_OPTIONS=\"--max-old-space-size=6144\" electron-builder build --win --publish never"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -38,7 +38,7 @@
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
     "electron": "^43.1.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.3.0",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
@@ -84,5 +84,4 @@
       "runAfterFinish": true
     }
   }
-  }
-    
+}
