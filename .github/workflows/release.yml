@@ -1,15 +1,4 @@
-# In your local repo:
-cd max-aii
 
-# Checkout the feature branch
-git checkout feature/tier-1-core-foundation
-git pull origin feature/tier-1-core-foundation
-
-# Create workflow directory
-mkdir -p .github/workflows
-
-# Create the file
-cat > .github/workflows/build-release.yml << 'EOF'
 name: 🚀 Auto Build & Release MAX-AII
 
 on:
@@ -45,9 +34,4 @@ jobs:
         with:
           name: windows-build
           path: release/
-EOF
-
-# Commit and push
-git add .github/workflows/build-release.yml
-git commit -m "ci: add build-release workflow"
-git push origin feature/tier-1-core-foundation
+          
