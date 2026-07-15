@@ -361,6 +361,7 @@ export function AIDashboard({
   const [activeTab, setActiveTab] = useState<
     | "chat_console"
     | "live_voice"
+    | "screen_link"
     | "notepad"
     | "api_keys"
     | "system_telemetry"
@@ -519,6 +520,276 @@ export function AIDashboard({
 
   const audioSessionRef = useRef<NovaAudioSession | null>(null);
 
+  // Real-time Screen Link States
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isAutoAnalyzing, setIsAutoAnalyzing] = useState<boolean>(false);
+  const [isVoiceWarningsEnabled, setIsVoiceWarningsEnabled] = useState<boolean>(true);
+  const [screenLogs, setScreenLogs] = useState<Array<{ id: string, time: string, status: "ok" | "error" | "info", message: string }>>([
+    { id: "init", time: new Date().toLocaleTimeString(), status: "info", message: "Real-time Screen Share Visual-AI system initialized in standby mode." }
+  ]);
+  const [isAnalyzingFrame, setIsAnalyzingFrame] = useState<boolean>(false);
+  const [activeScreenAnalysis, setActiveScreenAnalysis] = useState<string>("Standby. Initiate Screen Link to start receiving high-speed visual telemetry.");
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const autoAnalyzeTimerRef = useRef<any>(null);
+  const lastSpokenWarningRef = useRef<string>("");
+
+  const speakText = (text: string) => {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#`_\-]/g, ""); // clean Markdown symbols for speech clarity
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => 
+      v.name.includes("Google US") || 
+      v.name.includes("Natural") || 
+      v.name.includes("Zira") ||
+      (v.lang.startsWith("en-") && v.name.includes("Male") === false)
+    );
+    if (preferredVoice) utterance.voice = preferredVoice;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const captureFrame = (): { base64: string; mimeType: string } | null => {
+    if (!videoRef.current || !screenStream) return null;
+    const video = videoRef.current;
+    const videoTrack = screenStream.getVideoTracks()[0];
+    if (!videoTrack || videoTrack.readyState === "ended") {
+      handleStopScreenShare();
+      return null;
+    }
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const base64Data = canvas.toDataURL("image/jpeg", 0.6);
+        return {
+          base64: base64Data.split(",")[1],
+          mimeType: "image/jpeg"
+        };
+      }
+    } catch (e) {
+      console.error("Failed to capture screen frame:", e);
+    }
+    return null;
+  };
+
+  const handleStartScreenShare = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: "monitor",
+          frameRate: { ideal: 10 }
+        },
+        audio: false
+      });
+      
+      setScreenStream(stream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(e => console.log("Video play error:", e));
+      }
+
+      setScreenLogs(prev => [
+        { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "ok", message: "⚡ High-fidelity Screen Link established. Video feed synchronized." },
+        ...prev
+      ]);
+      setActiveScreenAnalysis("Screen Link established. Press 'Analyze Frame' or toggle 'Auto-Analyze' for real-time monitoring.");
+
+      stream.getVideoTracks()[0].onended = () => {
+        handleStopScreenShare(stream);
+      };
+
+    } catch (err: any) {
+      console.error("Display capture error:", err);
+      setScreenLogs(prev => [
+        { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "error", message: `Handshake Failed: ${err.message || "User declined screen capture permission."}` },
+        ...prev
+      ]);
+    }
+  };
+
+  const handleStopScreenShare = (passedStream?: MediaStream | null) => {
+    const streamToStop = passedStream || screenStream;
+    if (streamToStop) {
+      streamToStop.getTracks().forEach(track => track.stop());
+    }
+    setScreenStream(null);
+    setIsAutoAnalyzing(false);
+    if (autoAnalyzeTimerRef.current) {
+      clearInterval(autoAnalyzeTimerRef.current);
+      autoAnalyzeTimerRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setScreenLogs(prev => [
+      { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "info", message: "Screen Link disconnected by operator." },
+      ...prev
+    ]);
+    setActiveScreenAnalysis("Standby. Initiate Screen Link to start receiving high-speed visual telemetry.");
+  };
+
+  const handleSingleScreenAnalysis = async () => {
+    const captured = captureFrame();
+    if (!captured) {
+      alert("Screen capture is currently offline. Please establish the Screen Link first.");
+      return;
+    }
+
+    setIsAnalyzingFrame(true);
+    setScreenLogs(prev => [
+      { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "info", message: "Capturing instant high-res snapshot and running deep visual audit..." },
+      ...prev
+    ]);
+
+    try {
+      const response = await fetch("/api/screen-analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: captured.base64,
+          mimeType: captured.mimeType
+        })
+      });
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        const { hasIssue, analysis } = result.data;
+        setActiveScreenAnalysis(analysis);
+        
+        setScreenLogs(prev => [
+          { 
+            id: String(Date.now()), 
+            time: new Date().toLocaleTimeString(), 
+            status: hasIssue ? "error" : "ok", 
+            message: `[Visual Audit Completed] -> ${analysis}` 
+          },
+          ...prev
+        ]);
+
+        speakText(analysis);
+      } else {
+        throw new Error(result.error || "Visual parser returned an invalid response.");
+      }
+    } catch (err: any) {
+      console.error("Frame analysis failure:", err);
+      setScreenLogs(prev => [
+        { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "error", message: `Telemetry failure: ${err.message || "Failed to analyze screen frame."}` },
+        ...prev
+      ]);
+    } finally {
+      setIsAnalyzingFrame(false);
+    }
+  };
+
+  const handleToggleAutoAnalyze = () => {
+    if (isAutoAnalyzing) {
+      setIsAutoAnalyzing(false);
+      if (autoAnalyzeTimerRef.current) {
+        clearInterval(autoAnalyzeTimerRef.current);
+        autoAnalyzeTimerRef.current = null;
+      }
+      setScreenLogs(prev => [
+        { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "info", message: "Real-time automated scanning suspended." },
+        ...prev
+      ]);
+    } else {
+      if (!screenStream) {
+        alert("Please establish the Screen Link first before starting automated scans.");
+        return;
+      }
+      setIsAutoAnalyzing(true);
+      setScreenLogs(prev => [
+        { id: String(Date.now()), time: new Date().toLocaleTimeString(), status: "ok", message: "🔄 Real-time automated scanning engaged (scanning every 2.2 seconds)." },
+        ...prev
+      ]);
+      
+      runPeriodicScan();
+      
+      autoAnalyzeTimerRef.current = setInterval(() => {
+        runPeriodicScan();
+      }, 2200);
+    }
+  };
+
+  const runPeriodicScan = async () => {
+    const captured = captureFrame();
+    if (!captured) return;
+
+    try {
+      const response = await fetch("/api/screen-analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: captured.base64,
+          mimeType: captured.mimeType
+        })
+      });
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        const { hasIssue, analysis } = result.data;
+        
+        if (hasIssue) {
+          setActiveScreenAnalysis(analysis);
+          
+          if (analysis !== lastSpokenWarningRef.current) {
+            setScreenLogs(prev => [
+              { 
+                id: String(Date.now()), 
+                time: new Date().toLocaleTimeString(), 
+                status: "error", 
+                message: `⚠️ [Auto-Alert] ${analysis}` 
+              },
+              ...prev
+            ]);
+            
+            if (isVoiceWarningsEnabled) {
+              speakText(analysis);
+            }
+            lastSpokenWarningRef.current = analysis;
+          }
+        } else {
+          if (lastSpokenWarningRef.current !== "") {
+            setScreenLogs(prev => [
+              { 
+                id: String(Date.now()), 
+                time: new Date().toLocaleTimeString(), 
+                status: "ok", 
+                message: "❇️ Telemetry cleared. No errors or issues detected on the shared screen." 
+              },
+              ...prev
+            ]);
+            lastSpokenWarningRef.current = "";
+          }
+          setActiveScreenAnalysis("Active Scanning... Screen is clean and all systems look optimal!");
+        }
+      }
+    } catch (err: any) {
+      console.warn("Background scanning failed:", err);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (autoAnalyzeTimerRef.current) {
+        clearInterval(autoAnalyzeTimerRef.current);
+      }
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [screenStream]);
+
   // Auto scroll triggers
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const liveEndRef = useRef<HTMLDivElement | null>(null);
@@ -599,11 +870,24 @@ export function AIDashboard({
   // Send multimodal chat message
   const handleSendChatMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!chatInput.trim() && !pendingImage) return;
+    if (!chatInput.trim() && !pendingImage && !screenStream) return;
 
-    const userMsgText = chatInput;
-    const userMsgImg = pendingImage;
-    
+    let userMsgText = chatInput;
+    let userMsgImg = pendingImage;
+    let userMime = pendingImageMime;
+
+    // Auto-capture shared screen frame if stream is active and no image was manually uploaded
+    if (!userMsgImg && screenStream) {
+      const captured = captureFrame();
+      if (captured) {
+        userMsgImg = `data:${captured.mimeType};base64,${captured.base64}`;
+        userMime = captured.mimeType;
+        if (!userMsgText.trim()) {
+          userMsgText = "Analyze my current shared screen and let me know if there are any issues or errors I should fix.";
+        }
+      }
+    }
+
     // Add User Message to local UI
     setChatMessages(prev => [...prev, { role: "user", text: userMsgText, image: userMsgImg || undefined }]);
     setChatInput("");
@@ -624,7 +908,7 @@ export function AIDashboard({
         body: JSON.stringify({
           message: userMsgText,
           image: userMsgImg ? userMsgImg.split(",")[1] : undefined,
-          mimeType: pendingImageMime || undefined,
+          mimeType: userMime || undefined,
           history
         })
       });
@@ -1380,6 +1664,7 @@ export function AIDashboard({
          {[
           { id: "chat_console", label: "Nova Chat Console", icon: MessageSquare },
           { id: "live_voice", label: "Live Voice (Nova)", icon: Mic },
+          { id: "screen_link", label: "Real-time Screen Link", icon: Monitor },
           { id: "notepad", label: "Local Notepad", icon: FileText },
           { id: "api_keys", label: "Secure API Keys", icon: KeyRound },
           { id: "system_telemetry", label: "PC Hardware & Telemetry", icon: Cpu },
@@ -1423,12 +1708,20 @@ export function AIDashboard({
                   <p className="text-[10px] font-mono text-slate-500 uppercase">Synchronized with Gemini-2.5-Flash cognitive matrix</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-                </span>
-                <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">ONLINE</span>
+              <div className="flex items-center gap-3">
+                {screenStream && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-[9px] font-mono font-bold uppercase tracking-wider animate-pulse">
+                    <Monitor size={10} />
+                    <span>Screen Share Connected</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">ONLINE</span>
+                </div>
               </div>
             </div>
 
@@ -1713,6 +2006,190 @@ export function AIDashboard({
                     ))
                   )}
                   <div ref={liveEndRef} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REAL-TIME SCREEN LINK TAB */}
+        {activeTab === "screen_link" && (
+          <div className="lg:col-span-12 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[70vh]">
+            {/* Capture & Controls Panel (7 Cols) */}
+            <div className="lg:col-span-7 flex flex-col gap-4 bg-slate-950/40 border border-white/10 rounded-3xl p-5 relative overflow-hidden backdrop-blur-md">
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <div>
+                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase flex items-center gap-2">
+                    <Monitor className="text-cyan-400 animate-pulse" size={16} />
+                    Nova Screen Link Control
+                  </h2>
+                  <p className="text-[10px] font-mono text-slate-500 uppercase">Live vision intelligence matrix</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${screenStream ? "bg-emerald-400 animate-ping" : "bg-slate-600"}`} />
+                  <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">
+                    {screenStream ? "LINK ACTIVE" : "OFFLINE"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Viewport Box */}
+              <div className="flex-1 min-h-[380px] bg-black/50 rounded-2xl border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group p-2">
+                {screenStream ? (
+                  <video 
+                    ref={videoRef}
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className="w-full h-full object-contain rounded-xl border border-white/5 shadow-2xl"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-4 text-center max-w-md p-6">
+                    <div className="h-16 w-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.1)]">
+                      <Monitor size={32} className="animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-1">Visual Core Standby</h3>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        Establish the Screen Link to enable Nova AI to perceive your display, spot code errors, track layout defects, and assist your workflow.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleStartScreenShare}
+                      className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-slate-950 font-bold font-mono text-xs uppercase tracking-widest rounded-xl transition cursor-pointer shadow-lg active:scale-95 animate-pulse"
+                    >
+                      Connect Screen Link
+                    </button>
+                  </div>
+                )}
+
+                {/* Ambient Scanline overlay when active */}
+                {screenStream && isAutoAnalyzing && (
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-cyan-400/0 via-cyan-400/60 to-cyan-400/0 animate-bounce blur-[1px] pointer-events-none" />
+                )}
+              </div>
+
+              {/* Control Strip */}
+              <div className="flex flex-wrap gap-3 items-center justify-between border-t border-white/5 pt-4">
+                <div className="flex gap-2">
+                  {screenStream ? (
+                    <>
+                      <button
+                        onClick={() => handleStopScreenShare()}
+                        className="px-4 py-2 border border-rose-500/30 hover:border-rose-500 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl text-xs font-mono font-bold transition cursor-pointer"
+                      >
+                        Disconnect Link
+                      </button>
+                      <button
+                        onClick={handleSingleScreenAnalysis}
+                        disabled={isAnalyzingFrame}
+                        className="px-4 py-2 border border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/10 text-cyan-300 rounded-xl text-xs font-mono font-bold transition cursor-pointer disabled:opacity-40"
+                      >
+                        {isAnalyzingFrame ? "Scanning Screen..." : "Perform Visual Audit"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleStartScreenShare}
+                      className="px-4 py-2 border border-cyan-500/30 hover:border-cyan-400 bg-cyan-500/10 text-cyan-300 rounded-xl text-xs font-mono font-bold transition cursor-pointer"
+                    >
+                      Establish Screen Link
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-6">
+                  {/* Auto-Analyze Switch */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleToggleAutoAnalyze}
+                      disabled={!screenStream}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                        isAutoAnalyzing ? "bg-cyan-500" : "bg-slate-800"
+                      } disabled:opacity-30`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                          isAutoAnalyzing ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-xs font-mono select-none ${isAutoAnalyzing ? "text-cyan-300 font-bold" : "text-slate-400"}`}>
+                      Auto-Scan (2s)
+                    </span>
+                  </div>
+
+                  {/* Voice Warnings Switch */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsVoiceWarningsEnabled(!isVoiceWarningsEnabled)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                        isVoiceWarningsEnabled ? "bg-purple-500" : "bg-slate-800"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                          isVoiceWarningsEnabled ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-xs font-mono select-none ${isVoiceWarningsEnabled ? "text-purple-300 font-bold" : "text-slate-400"}`}>
+                      Voice Alerts
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Analysis & Activity Feed (5 Cols) */}
+            <div className="lg:col-span-5 flex flex-col gap-4 min-h-[500px]">
+              {/* Telemetry Status Card */}
+              <div className="bg-slate-950/40 border border-white/10 rounded-3xl p-5 backdrop-blur-md">
+                <h3 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">Live AI Inspection Result</h3>
+                <div className="bg-slate-900/80 rounded-2xl border border-white/5 p-4 min-h-[120px] flex flex-col justify-between">
+                  <p className="text-xs text-slate-300 font-mono leading-relaxed whitespace-pre-wrap">
+                    {activeScreenAnalysis}
+                  </p>
+                  <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-3 text-[10px] font-mono text-slate-500">
+                    <span>MODE: {isAutoAnalyzing ? "AUTOMATED SCANS" : "MANUAL SCAN"}</span>
+                    <span>VOICE: {isVoiceWarningsEnabled ? "VOCAL ALERTS ACTIVE" : "SILENT MONITOR"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrolling Telemetry Logs */}
+              <div className="flex-1 bg-slate-950/40 border border-white/10 rounded-3xl p-5 backdrop-blur-md flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2 mb-3">
+                  <span className="text-xs font-bold font-mono text-white tracking-widest uppercase">Visual AI Log Feed</span>
+                  <button 
+                    onClick={() => setScreenLogs([{ id: "clear", time: new Date().toLocaleTimeString(), status: "info", message: "Logs cleared by administrator." }])}
+                    className="text-[9px] font-mono text-slate-500 hover:text-slate-300 uppercase transition cursor-pointer"
+                  >
+                    Clear Feed
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2.5 max-h-[350px]">
+                  {screenLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="p-3 bg-slate-900/50 border border-white/5 rounded-2xl text-[11px] font-mono flex items-start gap-2.5 leading-relaxed"
+                    >
+                      <span className="text-slate-500 text-[10px] select-none">{log.time}</span>
+                      <div className="flex-1">
+                        <span className={`inline-block mr-2 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                          log.status === "error" 
+                            ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" 
+                            : log.status === "ok"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                        }`}>
+                          {log.status === "error" ? "ISSUE" : log.status === "ok" ? "OK" : "SYS"}
+                        </span>
+                        <span className="text-slate-300 whitespace-pre-wrap">{log.message}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

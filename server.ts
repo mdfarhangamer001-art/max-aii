@@ -1329,7 +1329,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.25";
+  const CURRENT_APP_VERSION = "1.0.28";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -2588,6 +2588,77 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
     } catch (err: any) {
       console.error("[Chat API Error]:", err);
       res.status(500).json({ success: false, error: err.message || "Failed generating AI response." });
+    }
+  });
+
+  // High-Speed Visual-AI Screen Analyzer
+  app.post("/api/screen-analyze", async (req, res) => {
+    try {
+      const { image, mimeType } = req.body;
+      if (!image) {
+        return res.status(400).json({ error: "Missing 'image' parameter." });
+      }
+
+      const keys = await loadAPIKeys();
+      const activeKey = process.env.GEMINI_API_KEY || 
+                        (keys.gemini?.enabled ? keys.gemini?.key : "") || 
+                        keys.gemini?.key || 
+                        (keys.powerful?.enabled ? keys.powerful?.key : "") || 
+                        keys.powerful?.key;
+      if (!activeKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on this server." });
+      }
+
+      const aiGen = new GoogleGenAI({ apiKey: activeKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+      
+      const systemInstruction = `You are the Real-time Vision Core of Nova AI OS (created by xtehzeeb.x).
+You are performing high-speed visual-AI analysis of the user's shared screen.
+Your job is to look at the screen screenshot very closely:
+1. Identify any active errors, bugs, compiler failures, network errors, or code typos.
+2. Spot any mistakes the user might be making in their current workspace or application they are building or using.
+3. If everything looks good and there are no errors, return a JSON object with: { "hasIssue": false, "analysis": "Screen is clear. Everything is running smoothly." }
+4. If you spot an error, issue, compiler crash, or a clear user mistake:
+   Explain clearly what the error is and provide the direct fix/solution.
+   Return a JSON object with: { "hasIssue": true, "analysis": "I detected an error on your screen: [brief description of error] - Here is how to fix it: [solution]." }
+   
+Keep the analysis exceptionally concise, friendly, and expert. Under 3 lines of text. Do not repeat previous warnings if they are already resolved.`;
+
+      const contents = [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: image,
+                mimeType: mimeType || "image/jpeg"
+              }
+            },
+            { text: "Analyze this live screen capture. If there is a compiler error, broken code, network failure, or user mistake, report it clearly. Otherwise, if all is perfect, say everything looks great." }
+          ]
+        }
+      ];
+
+      const response = await generateContentWithFallback(aiGen, {
+        model: "gemini-3.5-flash",
+        contents,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              hasIssue: { type: Type.BOOLEAN },
+              analysis: { type: Type.STRING }
+            },
+            required: ["hasIssue", "analysis"]
+          }
+        }
+      });
+
+      res.json({ success: true, data: JSON.parse(response.text || "{}") });
+    } catch (err: any) {
+      console.error("[Screen Analyze API Error]:", err);
+      res.status(500).json({ success: false, error: err.message || "Failed to analyze screen capture." });
     }
   });
 
