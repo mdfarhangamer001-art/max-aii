@@ -95,6 +95,10 @@ jobs:
         run: |
           xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm run electron:build
 
+      - name: Re-analyze and Verify Production Installer Size
+        run: |
+          node scripts/increment-version-and-size.js --post
+
       - name: Publish Automatically to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:

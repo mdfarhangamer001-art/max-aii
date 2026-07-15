@@ -1329,7 +1329,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.28";
+  const CURRENT_APP_VERSION = "1.0.32";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -1704,24 +1704,29 @@ async function startServer() {
           const major = parts[0] || 1;
           const minor = parts[1] || 0;
           const patch = parts[2] || 0;
-          const sizeMb = 145.0 + (major - 1) * 50 + minor * 12.5 + patch * 1.6;
+          const sizeMb = 48.0 + (major - 1) * 10 + minor * 5.0 + patch * 0.4;
           return sizeMb.toFixed(1) + " MB";
         } catch (e) {
-          return "145.0 MB";
+          return "50.0 MB";
         }
       };
 
       let installerSize = calculateInstallerSize(latestTag);
-      try {
-        const metadataPath = path.join(process.cwd(), 'dist/build-metadata.json');
-        if (fsSync.existsSync(metadataPath)) {
-          const metadata = JSON.parse(fsSync.readFileSync(metadataPath, 'utf8'));
-          if (metadata.installerSize) {
-            installerSize = metadata.installerSize;
+      if (exeAsset && exeAsset.size) {
+        installerSize = (exeAsset.size / (1024 * 1024)).toFixed(2) + " MB";
+        console.log(`[Updater] Resolved exact installer size from GitHub Release Asset: ${installerSize}`);
+      } else {
+        try {
+          const metadataPath = path.join(process.cwd(), 'dist/build-metadata.json');
+          if (fsSync.existsSync(metadataPath)) {
+            const metadata = JSON.parse(fsSync.readFileSync(metadataPath, 'utf8'));
+            if (metadata.installerSize) {
+              installerSize = metadata.installerSize;
+            }
           }
+        } catch (e) {
+          console.warn("[Updater] Failed to read installer size metadata:", e);
         }
-      } catch (e) {
-        console.warn("[Updater] Failed to read installer size metadata:", e);
       }
 
       res.json({
@@ -1748,10 +1753,10 @@ async function startServer() {
           const major = parts[0] || 1;
           const minor = parts[1] || 0;
           const patch = parts[2] || 0;
-          const sizeMb = 145.0 + (major - 1) * 50 + minor * 12.5 + patch * 1.6;
+          const sizeMb = 48.0 + (major - 1) * 10 + minor * 5.0 + patch * 0.4;
           return sizeMb.toFixed(1) + " MB";
         } catch (e) {
-          return "145.0 MB";
+          return "50.0 MB";
         }
       };
 
@@ -2659,6 +2664,103 @@ Keep the analysis exceptionally concise, friendly, and expert. Under 3 lines of 
     } catch (err: any) {
       console.error("[Screen Analyze API Error]:", err);
       res.status(500).json({ success: false, error: err.message || "Failed to analyze screen capture." });
+    }
+  });
+
+  // 3D Dimension Lab - AI Image Generation (Imagen 3)
+  app.post("/api/generate-image-3d", async (req, res) => {
+    try {
+      const { prompt, aspectRatio, stylePreset, refineWithGemini } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ success: false, error: "Missing 'prompt' parameter." });
+      }
+
+      const keys = await loadAPIKeys();
+      const activeKey = process.env.GEMINI_API_KEY || 
+                        (keys.gemini?.enabled ? keys.gemini?.key : "") || 
+                        keys.gemini?.key || 
+                        (keys.powerful?.enabled ? keys.powerful?.key : "") || 
+                        keys.powerful?.key;
+      if (!activeKey) {
+        return res.status(500).json({ success: false, error: "GEMINI_API_KEY is not configured on this server." });
+      }
+
+      const aiGen = new GoogleGenAI({ apiKey: activeKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+
+      let finalPrompt = prompt;
+
+      // 1. Refine Prompt with Gemini Flash if requested
+      if (refineWithGemini) {
+        try {
+          let styleInstructions = "";
+          if (stylePreset === "cinematic-3d") {
+            styleInstructions = "Write a highly detailed, cinematic 3D render prompt. It must describe beautiful 3D visuals, dramatic lighting (like high-contrast, golden hour, or neon glow), rich textures, volumetric dust, depth of field, and perfect 3D composition (like a Marvel movie scene or a Disney render). Use terms like 'high-fidelity 3D digital render, cinematic lighting, dramatic depth of field, octane render, masterpiece'.";
+          } else if (stylePreset === "vibrant-cyberpunk") {
+            styleInstructions = "Write a detailed cyberpunk 3D visual prompt. Mention neon illumination, wet streets, cybernetic enhancements, high-tech glowing machinery, rich purples, electric blues, deep orange accents, and cinematic sci-fi photorealism.";
+          } else if (stylePreset === "mystical-fantasy") {
+            styleInstructions = "Write an ethereal 3D fantasy prompt with ancient runes, glowing orbs, mystical dust particles, divine warm lighting, detailed flora, and majestic fantasy settings.";
+          } else if (stylePreset === "futuristic-hologram") {
+            styleInstructions = "Write a futuristic hologram 3D visual prompt. Describe floating neon light blue grids, shimmering laser rays, abstract digital patterns, wireframe designs, and sleek tech aesthetics.";
+          } else if (stylePreset === "sci-fi-concept") {
+            styleInstructions = "Write a futuristic sci-fi concept art 3D prompt. Mention alien architecture, massive spaceships, sleek metallic paneling, volumetric fog, starlight illumination, and epic scale.";
+          } else if (stylePreset === "photorealistic") {
+            styleInstructions = "Write a photorealistic 3D studio shot prompt. Mention soft studio softbox lighting, extremely sharp details, realistic textures, detailed materials, professional camera setup, and award-winning studio portrait composition.";
+          } else {
+            styleInstructions = "Enhance this prompt slightly for high-quality 3D digital art generation, adding creative lighting, detailed textures, and rich composition while maintaining the original subject.";
+          }
+
+          const systemPrompt = `You are an expert Prompt Engineer for image generators like Imagen 3.
+Your job is to expand and refine the user's raw prompt into a beautiful, detailed, highly visual description according to these instructions:
+${styleInstructions}
+
+Ensure the final description stays true to the user's core idea but adds incredible artistic detail, volumetric light, realistic material textures, and gorgeous perspective.
+DO NOT add any conversational filler. Only output the final enhanced prompt text. Keep the result under 150 words.`;
+
+          const response = await aiGen.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: `Raw prompt: "${prompt}"` }] }],
+            config: { systemInstruction: systemPrompt }
+          });
+
+          if (response.text) {
+            finalPrompt = response.text.trim();
+            console.log(`[Prompt Refinement] Refined prompt: "${finalPrompt}"`);
+          }
+        } catch (refineErr: any) {
+          console.warn("[Prompt Refinement Warning]:", refineErr);
+          // Fall back to original prompt if refinement fails
+        }
+      }
+
+      console.log(`[Image Generation] Generating with prompt: "${finalPrompt}"`);
+
+      // 2. Call Imagen 3 via @google/genai SDK
+      const response = await aiGen.models.generateImages({
+        model: "imagen-3.0-generate-002",
+        prompt: finalPrompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: "image/jpeg",
+          aspectRatio: aspectRatio || "1:1"
+        }
+      });
+
+      if (!response.generatedImages || response.generatedImages.length === 0) {
+        throw new Error("No images were returned by the image generation model.");
+      }
+
+      const base64Image = response.generatedImages[0].image.imageBytes;
+      const imageUrl = `data:image/jpeg;base64,${base64Image}`;
+
+      res.json({
+        success: true,
+        imageUrl,
+        refinedPrompt: finalPrompt,
+        originalPrompt: prompt
+      });
+    } catch (err: any) {
+      console.error("[Generate Image API Error]:", err);
+      res.status(500).json({ success: false, error: err.message || "Failed to generate AI image." });
     }
   });
 

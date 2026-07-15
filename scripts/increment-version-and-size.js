@@ -157,8 +157,8 @@ if (isPost || (!isPre && !isPost)) {
   const distSize = getFolderSize(distDir);
 
   if (!foundReleaseFile) {
-    // Calculate dist/ folder size and add to the baseline Electron wrapper size (approx 145 MB for full production wrapper)
-    const baselineBytes = 145 * 1024 * 1024; // 145 MB standard desktop engine baseline
+    // Calculate dist/ folder size and add to the baseline compressed Electron wrapper size (approx 48 MB)
+    const baselineBytes = 48 * 1024 * 1024; // 48 MB standard desktop engine baseline
     exactSizeInBytes = baselineBytes + distSize;
     installerSizeStr = (exactSizeInBytes / (1024 * 1024)).toFixed(2) + " MB";
     console.log(`📦 [Analysis] Compiled dynamic installer bundle size (Web Assets + Electron Shell): ${installerSizeStr}`);

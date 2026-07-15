@@ -45,6 +45,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Memory, MemoryCategory } from "../lib/memoryTypes";
 import { NovaCoreVisualizer, NovaEmotion } from "./NovaCoreVisualizer";
 import { NovaAudioSession, LiveState } from "../lib/audio";
+import { CreativeStudio } from "./CreativeStudio";
 
 export interface JarvisSubAgent {
   id: string;
@@ -362,6 +363,7 @@ export function AIDashboard({
     | "chat_console"
     | "live_voice"
     | "screen_link"
+    | "creative_studio"
     | "notepad"
     | "api_keys"
     | "system_telemetry"
@@ -1665,6 +1667,7 @@ export function AIDashboard({
           { id: "chat_console", label: "Nova Chat Console", icon: MessageSquare },
           { id: "live_voice", label: "Live Voice (Nova)", icon: Mic },
           { id: "screen_link", label: "Real-time Screen Link", icon: Monitor },
+          { id: "creative_studio", label: "3D Dimension Lab", icon: Sparkles },
           { id: "notepad", label: "Local Notepad", icon: FileText },
           { id: "api_keys", label: "Secure API Keys", icon: KeyRound },
           { id: "system_telemetry", label: "PC Hardware & Telemetry", icon: Cpu },
@@ -2194,6 +2197,11 @@ export function AIDashboard({
               </div>
             </div>
           </div>
+        )}
+
+        {/* 3D DIMENSION STUDIO TAB */}
+        {activeTab === "creative_studio" && (
+          <CreativeStudio user={user} />
         )}
 
         {/* LOCAL NOTEPAD TAB */}
