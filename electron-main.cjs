@@ -183,6 +183,21 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    // Explicitly auto-grant microphone, audio, and camera permissions for the desktop container
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      const allowed = ['media', 'audio', 'microphone', 'camera', 'display-capture', 'screen'];
+      if (allowed.includes(permission.toLowerCase())) {
+        callback(true);
+      } else {
+        callback(false);
+      }
+    });
+
+    session.defaultSession.setPermissionCheckHandler((webContents, permission, origin) => {
+      const allowed = ['media', 'audio', 'microphone', 'camera', 'display-capture', 'screen'];
+      return allowed.includes(permission.toLowerCase());
+    });
+
     ipcMain.handle('google-signin', async () => {
       console.log('[Electron Main] Received google-signin request over IPC');
       return signInWithGoogleDesktop();
