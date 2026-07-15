@@ -1378,8 +1378,8 @@ export function AIDashboard({
       {/* SUB-TAB SELECTOR STRIP */}
       <div className="w-full max-w-7xl mx-auto flex border-b border-white/5 pb-2 mb-6 overflow-x-auto gap-2 shrink-0 no-scrollbar">
          {[
-          { id: "chat_console", label: "Max AI Chat Console", icon: MessageSquare },
-          { id: "live_voice", label: "Live Voice (Myraa)", icon: Mic },
+          { id: "chat_console", label: "Nova Chat Console", icon: MessageSquare },
+          { id: "live_voice", label: "Live Voice (Nova)", icon: Mic },
           { id: "notepad", label: "Local Notepad", icon: FileText },
           { id: "api_keys", label: "Secure API Keys", icon: KeyRound },
           { id: "system_telemetry", label: "PC Hardware & Telemetry", icon: Cpu },
@@ -1557,7 +1557,7 @@ export function AIDashboard({
             <div className="md:col-span-7 flex flex-col gap-4 bg-slate-950/40 border border-white/10 rounded-3xl p-5 relative overflow-hidden backdrop-blur-md">
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
                 <div>
-                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase">Myraa Duplex Audio Core</h2>
+                  <h2 className="text-sm font-bold font-mono text-white tracking-widest uppercase">Nova Duplex Audio Core</h2>
                   <p className="text-[10px] font-mono text-slate-500 uppercase">Live emotional state synchronizer</p>
                 </div>
                 <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400 uppercase">
