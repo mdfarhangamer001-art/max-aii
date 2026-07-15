@@ -108,7 +108,7 @@ export function AndroidPairingModal({
   // System Notifications
   const [phoneNotifications, setPhoneNotifications] = useState<Array<{ id: string; app: string; title: string; desc: string; time: string }>>([
     { id: "1", app: "Instagram", title: "New Follower Request", desc: "someone_security requested to follow you", time: "Just now" },
-    { id: "2", app: "System OS", title: "Accessibility Permission Alert", desc: "Max-AI Companion granted deep device control overlay", time: "5m ago" },
+    { id: "2", app: "System OS", title: "Accessibility Permission Alert", desc: "Nova Companion granted deep device control overlay", time: "5m ago" },
     { id: "3", app: "Secure Node", title: "Key Exchange Refresh", desc: "Diffie-Hellman entropy updated successfully", time: "12m ago" }
   ]);
 
@@ -523,7 +523,7 @@ export function AndroidPairingModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold font-mono text-white tracking-wider uppercase">Max-AI Remote Companion Engine</h3>
+                <h3 className="text-sm font-bold font-mono text-white tracking-wider uppercase">Nova AI Remote Companion Engine</h3>
                 {pairingStep === "connected" ? (
                   <span className="px-2 py-0.5 rounded-full text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono animate-pulse">
                     SECURED NODE CONNECTED
@@ -759,7 +759,7 @@ export function AndroidPairingModal({
                     </div>
 
                     <p className="text-[11px] text-slate-400 mb-4 leading-relaxed">
-                      Push the pre-configured Max-AI Mobile Client over ADB. This client executes accessibility automation, media syncs, and screen mirrors natively.
+                      Push the pre-configured Nova AI Mobile Client over ADB. This client executes accessibility automation, media syncs, and screen mirrors natively.
                     </p>
 
                     <button

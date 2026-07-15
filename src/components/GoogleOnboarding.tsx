@@ -88,7 +88,7 @@ export function GoogleOnboarding({ onSignedIn, onContinueOffline }: GoogleOnboar
               SECURE DEPLOYMENT PROTOCOL
             </span>
             <h1 className="text-4xl font-extralight text-white tracking-tight font-sans">
-              Max-AI
+              Nova AI
             </h1>
             <p className="text-[11px] font-mono text-slate-400 mt-1 uppercase tracking-wider">
               Model Year: 2088 Edition
@@ -98,7 +98,7 @@ export function GoogleOnboarding({ onSignedIn, onContinueOffline }: GoogleOnboar
 
         {/* Body Content Description */}
         <p className="text-slate-300 text-sm font-sans leading-relaxed text-center mb-8 px-2">
-          Max-AI is your hyper-intelligent holographic companion. Sign in with your Google Account to initialize high-grade secure cloud synchronization.
+          Nova AI is your hyper-intelligent holographic companion. Sign in with your Google Account to initialize high-grade secure cloud synchronization.
         </p>
 
         {/* Features Section */}

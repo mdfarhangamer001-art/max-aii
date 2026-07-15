@@ -167,7 +167,7 @@ export function SetupWizard({ isOpen, onComplete }: SetupWizardProps) {
                 <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse" />
                 <img
                   src="/assets/icon.png"
-                  alt="Max-AI Logo Emblem"
+                  alt="Nova AI Logo Emblem"
                   className="relative w-20 h-20 rounded-2xl border border-cyan-400/40 bg-black object-cover shadow-[0_0_25px_rgba(6,182,212,0.45)]"
                   referrerPolicy="no-referrer"
                 />
@@ -177,7 +177,7 @@ export function SetupWizard({ isOpen, onComplete }: SetupWizardProps) {
               Initialize your hyper-intelligent Companion OS
             </h3>
             <p className="text-slate-300 text-xs sm:text-sm font-sans leading-relaxed">
-              Welcome to **Max-AI (2080 Edition)**. Max-AI is a responsive, multi-agent cognitive operating system modeled after futuristic conversational assistants.
+              Welcome to **Nova AI (2080 Edition)**. Nova AI is a responsive, multi-agent cognitive operating system modeled after futuristic conversational assistants.
             </p>
             
             {/* Corrected Owner & Project Badge */}
@@ -186,11 +186,11 @@ export function SetupWizard({ isOpen, onComplete }: SetupWizardProps) {
                 <span className="text-cyan-400">👑</span>
                 <div>
                   <span className="text-slate-400">Created by: </span>
-                  <span className="text-white font-bold">mukimudeen76</span>
+                  <span className="text-white font-bold">xtehzeeb.x</span>
                 </div>
               </div>
               <a 
-                href="https://github.com/mukimudeen76/Max-AI" 
+                href="https://github.com/IRISX-AI/IRIS-AI" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="text-[10px] text-cyan-400 hover:text-cyan-300 transition hover:underline flex items-center gap-1"

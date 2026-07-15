@@ -9,7 +9,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import QRCode from "qrcode";
 
-interface MaxAIDashboardProps {
+interface NovaAIDashboardProps {
   user: any;
   onSignOut: () => void;
   onSignInGoogle: () => Promise<any>;
@@ -20,7 +20,7 @@ interface MaxAIDashboardProps {
   desktopBridgeToken: string;
 }
 
-export function MaxAIDashboard({
+export function NovaAIDashboard({
   user,
   onSignOut,
   onSignInGoogle,
@@ -29,12 +29,12 @@ export function MaxAIDashboard({
   onDevicePaired,
   onDeviceDisconnected,
   desktopBridgeToken
-}: MaxAIDashboardProps) {
+}: NovaAIDashboardProps) {
   // Tabs: pairing, mirror, files, automation, terminal, security, updater
   const [activeTab, setActiveTab] = useState<"pairing" | "mirror" | "files" | "automation" | "terminal" | "security" | "updater">("pairing");
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [pairingPayload, setPairingPayload] = useState<any>(null);
-  const [logs, setLogs] = useState<string[]>(["[" + new Date().toLocaleTimeString() + "] Systems Initialized. Welcome to Max-AI OS Unified Dashboard."]);
+  const [logs, setLogs] = useState<string[]>(["[" + new Date().toLocaleTimeString() + "] Systems Initialized. Welcome to Nova AI OS Unified Dashboard."]);
   const [inputCommand, setInputCommand] = useState<string>("");
   const [isSimulatingScan, setIsSimulatingScan] = useState<boolean>(false);
 
@@ -109,7 +109,7 @@ export function MaxAIDashboard({
 
   // Updater states
   const [gitOwner, setGitOwner] = useState<string>("mukimudeen76");
-  const [gitRepo, setGitRepo] = useState<string>("Max-AI");
+  const [gitRepo, setGitRepo] = useState<string>("IRIS-AI");
   const [gitToken, setGitToken] = useState<string>("");
   const [automaticUpdates, setAutomaticUpdates] = useState<boolean>(true);
   const [checkOnStartup, setCheckOnStartup] = useState<boolean>(true);
@@ -158,7 +158,7 @@ export function MaxAIDashboard({
         if (res.ok) {
           const data = await res.json();
           setGitOwner(data.owner || "mukimudeen76");
-          setGitRepo(data.repo || "Max-AI");
+          setGitRepo(data.repo || "IRIS-AI");
           setGitToken(data.token || "");
           setAutomaticUpdates(!!data.automaticUpdates);
           setCheckOnStartup(data.checkOnStartup !== false);
@@ -597,7 +597,7 @@ export function MaxAIDashboard({
                         </div>
 
                         <p className="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
-                          Scan using the official Max-AI Android companion app to build a secure AES-256-GCM encrypted local network tunnel instantly.
+                          Scan using the official Nova AI Android companion app to build a secure AES-256-GCM encrypted local network tunnel instantly.
                         </p>
 
                         <button
@@ -753,7 +753,7 @@ export function MaxAIDashboard({
                             </div>
 
                             <div className="flex flex-col items-center pb-2">
-                              <span className="text-[9px] font-mono text-slate-600 uppercase">Max-AI Mobile Client v4.0</span>
+                              <span className="text-[9px] font-mono text-slate-600 uppercase">Nova AI Mobile Client v4.0</span>
                             </div>
                           </div>
                         )}
@@ -1182,7 +1182,7 @@ export function MaxAIDashboard({
                       </div>
                       <h4 className="text-sm font-semibold text-white mb-2">Local Desktop Bridge Automation</h4>
                       <p className="text-xs text-slate-400 leading-relaxed mb-6">
-                        Max-AI matches clipboard events and screen states dynamically, forwarding secure API payloads to the desktop loop.
+                        Nova AI matches clipboard events and screen states dynamically, forwarding secure API payloads to the desktop loop.
                       </p>
 
                       <div className="p-4 bg-slate-950/80 border border-white/5 rounded-2xl text-[11px] font-mono space-y-3">
@@ -1487,7 +1487,7 @@ export function MaxAIDashboard({
 
         {/* FOOTER ACCENTS */}
         <footer className="mt-8 border-t border-white/5 pt-4 text-center text-[10px] font-mono text-slate-600 max-w-5xl w-full mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-          <span>&copy; {new Date().getFullYear()} Max-AI Secure Systems Node. ALL CHANNELS ACTIVE.</span>
+          <span>&copy; {new Date().getFullYear()} Nova AI Secure Systems Node. ALL CHANNELS ACTIVE.</span>
           <div className="flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="uppercase text-[9px] tracking-wider text-slate-500">Encryption Active: AES-256 + ECDH 25519</span>

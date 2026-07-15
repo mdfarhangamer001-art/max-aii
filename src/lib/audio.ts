@@ -1,5 +1,5 @@
 /**
- * Audio handling utility for Myraa Live API Voice stream.
+ * Audio handling utility for Nova Live API Voice stream.
  * Handles:
  * - 16kHz layout sampling for microphone stream.
  * - Raw Little Endian Int16 PCM translation.
@@ -59,7 +59,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-export class MyraaAudioSession {
+export class NovaAudioSession {
   private ws: WebSocket | null = null;
   
   // Audios contexts (separate to match exact required sample rates)
@@ -143,7 +143,7 @@ export class MyraaAudioSession {
       this.ws.binaryType = "blob";
 
       this.ws.onopen = async () => {
-        console.log("[Myraa] Connected to server side WS bridge");
+        console.log("[Nova] Connected to server side WS bridge");
         try {
           // Guard against early user disconnect during connection setup
           if (!this.isActivated) return;
@@ -254,13 +254,13 @@ export class MyraaAudioSession {
 
           // Handle server-side states
           if (data.type === "status") {
-            console.log("[Myraa WS Status]:", data.status);
+            console.log("[Nova WS Status]:", data.status);
             if (data.status === "connecting_gemini") {
               // Wait for Gemini Live connection
             } else if (data.status === "connected") {
               this.setState("listening");
             } else if (data.status === "session_closed") {
-              console.log("[Myraa] Session closed on server-side. Active status:", this.isActivated);
+              console.log("[Nova] Session closed on server-side. Active status:", this.isActivated);
               if (this.isActivated) {
                 this.handleAutoReconnect();
               } else {
@@ -275,14 +275,14 @@ export class MyraaAudioSession {
             this.playAudioPCMChunk(data.audio);
           }
 
-          // Handle interruption signal (e.g. user talked over Myraa)
+          // Handle interruption signal (e.g. user talked over Nova)
           if (data.type === "interrupted") {
             this.handleInterruption();
           }
 
           // Turn complete
           if (data.type === "turnComplete") {
-            // Once Myraa completes speaking, change visual state back to listening
+            // Once Nova completes speaking, change visual state back to listening
             setTimeout(() => {
               if (this.activeSources.length === 0 && this.currentState === "speaking") {
                 this.setState("listening");
@@ -506,7 +506,7 @@ export class MyraaAudioSession {
     if (this.isAttemptingReconnect) return;
     this.isAttemptingReconnect = true;
 
-    console.log("[Myraa Audio Core] Reconnecting in 2 seconds...");
+    console.log("[Nova Audio Core] Reconnecting in 2 seconds...");
     this.setState("connecting");
 
     this.cleanupNodes();
@@ -519,13 +519,13 @@ export class MyraaAudioSession {
       }
 
       try {
-        console.log("[Myraa Audio Core] Attempting reconnect sequence now...");
+        console.log("[Nova Audio Core] Attempting reconnect sequence now...");
         // Re-authenticate and spin up audio stream lines
         this.isActivated = false; // reset flag to let connect pass
         await this.connect();
         this.isAttemptingReconnect = false;
       } catch (e) {
-        console.error("[Myraa Audio Core] Reconnect sequence failure:", e);
+        console.error("[Nova Audio Core] Reconnect sequence failure:", e);
         this.isAttemptingReconnect = false;
         
         // Schedule retry if user is still actively keeping voice session open

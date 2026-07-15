@@ -101,7 +101,7 @@ function signInWithGoogleDesktop() {
               </head>
               <body>
                 <h1>Authentication Successful</h1>
-                <p>You may now close this browser window and return to the Max-AI OS application.</p>
+                <p>You may now close this browser window and return to the Nova AI OS application.</p>
               </body>
             </html>
           `);

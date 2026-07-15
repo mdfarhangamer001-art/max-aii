@@ -1,10 +1,10 @@
 @echo off
-title Max-AI - All-in-One Automated Setup & Launcher
+title Nova AI - All-in-One Automated Setup & Launcher
 color 0B
 cls
 
 echo =====================================================================
-echo               🚀 MAX-AI - AUTOMATED ALL-IN-ONE SETUP SUITE 🚀
+echo               🚀 NOVA AI - AUTOMATED ALL-IN-ONE SETUP SUITE 🚀
 echo =====================================================================
 echo.
 echo  This unified script will automatically:
@@ -12,7 +12,7 @@ echo  1. Check and install Python dependencies (pyautogui, pillow, requests)
 echo  2. Automatically download and extract official Android ADB tools
 echo  3. Setup Node.js dependencies
 echo  4. Fire up the local PC Desktop Control Bridge (Port 3002)
-echo  5. Launch the main Max-AI central server (Port 3000)
+echo  5. Launch the main Nova AI central server (Port 3000)
 echo.
 echo =====================================================================
 echo.
@@ -92,15 +92,15 @@ if not exist node_modules (
 echo.
 
 :: 5. STARTING THE CONTROL BRIDGES
-echo [5/5] Initiating MAX-AI Core Engines...
+echo [5/5] Initiating Nova AI Core Engines...
 echo.
-echo [Max-AI] Starting local desktop controller on Loopback Port 3002...
-start "Max-AI Desktop Bridge" cmd /k "title Max-AI Desktop Bridge (Port 3002) && python local-desktop-bridge.py"
+echo [Nova AI] Starting local desktop controller on Loopback Port 3002...
+start "Nova AI Desktop Bridge" cmd /k "title Nova AI Desktop Bridge (Port 3002) && python local-desktop-bridge.py"
 
-echo [Max-AI] Booting central Node.js web server on Port 3000...
+echo [Nova AI] Booting central Node.js web server on Port 3000...
 echo =====================================================================
 echo.
-echo  🚀 Max-AI is now ready to roll!
+echo  🚀 Nova AI is now ready to roll!
 echo  👉 Open your browser and head to: http://localhost:3000
 echo.
 echo =====================================================================

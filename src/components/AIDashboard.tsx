@@ -43,8 +43,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Memory, MemoryCategory } from "../lib/memoryTypes";
-import { MyraaCoreVisualizer, MyraaEmotion } from "./MyraaCoreVisualizer";
-import { MyraaAudioSession, LiveState } from "../lib/audio";
+import { NovaCoreVisualizer, NovaEmotion } from "./NovaCoreVisualizer";
+import { NovaAudioSession, LiveState } from "../lib/audio";
 
 export interface JarvisSubAgent {
   id: string;
@@ -499,7 +499,7 @@ export function AIDashboard({
   const [notes, setNotes] = useState<Array<{id: string, title: string, content: string, date: string}>>(() => {
     const saved = localStorage.getItem("max_notes");
     return saved ? JSON.parse(saved) : [
-      { id: "1", title: "Max AI Operating Manual", content: "# Max AI Workspace Notes\n\nThis is your offline, resilient workspace notes manager.\n\nYou can use this area to structure ideas, prepare code bases, or detail instructions. Max AI can read, format, and deploy code written here directly.\n\n### Core System Command Triggers:\n- Click **Ask Max AI to Summarize** to request analysis\n- Click **Formulate / Format Code** to tidy and structuralise scripts", date: new Date().toLocaleDateString() }
+      { id: "1", title: "Nova AI Operating Manual", content: "# Nova AI Workspace Notes\n\nThis is your offline, resilient workspace notes manager.\n\nYou can use this area to structure ideas, prepare code bases, or detail instructions. Nova AI can read, format, and deploy code written here directly.\n\n### Core System Command Triggers:\n- Click **Ask Nova AI to Summarize** to request analysis\n- Click **Formulate / Format Code** to tidy and structuralise scripts", date: new Date().toLocaleDateString() }
     ];
   });
   const [selectedNoteId, setSelectedNoteId] = useState<string>("1");
@@ -508,16 +508,16 @@ export function AIDashboard({
     localStorage.setItem("max_notes", JSON.stringify(notes));
   }, [notes]);
 
-  // Live Voice (Myraa) states
+  // Live Voice (Nova) states
   const [liveState, setLiveState] = useState<LiveState>("disconnected");
   const [liveTranscription, setLiveTranscription] = useState<Array<{role: string, text: string}>>([]);
-  const [activeEmotion, setActiveEmotion] = useState<MyraaEmotion>("idle");
+  const [activeEmotion, setActiveEmotion] = useState<NovaEmotion>("idle");
   const [uiTheme, setUiTheme] = useState<"cosmic" | "cyberpunk" | "matrix" | "glassmorphic">("cosmic");
   const [uiMode, setUiMode] = useState<"floating_core" | "2d" | "3d" | "glassmorphism" | "dashboard">("floating_core");
   const [animationIntensity, setAnimationIntensity] = useState<number>(1.0);
   const [powerUsage, setPowerUsage] = useState<"normal" | "low">("normal");
 
-  const audioSessionRef = useRef<MyraaAudioSession | null>(null);
+  const audioSessionRef = useRef<NovaAudioSession | null>(null);
 
   // Auto scroll triggers
   const chatEndRef = useRef<HTMLDivElement | null>(null);
@@ -547,7 +547,7 @@ export function AIDashboard({
       setLiveState("connecting");
       setLiveTranscription([{ role: "system", text: "Initializing low-latency voice pipeline..." }]);
 
-      audioSessionRef.current = new MyraaAudioSession({
+      audioSessionRef.current = new NovaAudioSession({
         onStateChange: (state) => {
           setLiveState(state);
           if (state === "speaking") {
@@ -759,7 +759,7 @@ export function AIDashboard({
   const [ramLoad, setRamLoad] = useState<number>(5.4); // GB
   const [netUpload, setNetUpload] = useState<number>(1.2); // MB/s
   const [netDownload, setNetDownload] = useState<number>(14.5); // MB/s
-  const [clipboardContent, setClipboardContent] = useState<string>("https://github.com/mukimudeen76/Max-AI");
+  const [clipboardContent, setClipboardContent] = useState<string>("https://github.com/IRISX-AI/IRIS-AI");
 
   // Active workflow steps
   const [workflowSteps, setWorkflowSteps] = useState<Array<{ id: string; action: string; param: string }>>([
@@ -1237,13 +1237,13 @@ export function AIDashboard({
             </h1>
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-0.5">
               <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
-                Max-AI OS Autonomous Dashboard (2080 Edition)
+                Nova AI OS Autonomous Dashboard (2080 Edition)
               </p>
               <span className="text-[9px] font-mono text-slate-600 hidden sm:inline">|</span>
               <p className="text-[10px] font-mono text-cyan-400 flex items-center gap-1">
-                <span>Created by mukimudeen76</span>
+                <span>Created by xtehzeeb.x</span>
                 <a 
-                  href="https://github.com/mukimudeen76/Max-AI" 
+                  href="https://github.com/IRISX-AI/IRIS-AI" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="hover:underline text-[9px] font-bold text-white bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-500/25"
@@ -1328,7 +1328,7 @@ export function AIDashboard({
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mb-3 leading-relaxed">
-                If running Max-AI on a cloud server, enter the local token displayed in your PC terminal to authorize system control commands.
+                If running Nova AI on a cloud server, enter the local token displayed in your PC terminal to authorize system control commands.
               </p>
               <div className="flex flex-col gap-2">
                 <label className="text-[9px] font-mono uppercase text-slate-500 font-bold">Security Token</label>
@@ -1569,7 +1569,7 @@ export function AIDashboard({
 
               {/* The Holographic Core Canvas */}
               <div className="flex-1 min-h-[380px] bg-black/40 rounded-2xl border border-white/5 flex items-center justify-center relative overflow-hidden group">
-                <MyraaCoreVisualizer
+                <NovaCoreVisualizer
                   session={audioSessionRef.current}
                   state={liveState}
                   themeColor={themeColor}
@@ -3407,7 +3407,7 @@ export function AIDashboard({
               </div>
 
               <p className="text-slate-300 text-xs leading-relaxed font-sans">
-                You are about to permanently erase this memory from Max-AI's cognitive records. No hidden backup, cache, or restore point will be kept. Max-AI will lose all awareness of this detail forever.
+                You are about to permanently erase this memory from Nova AI's cognitive records. No hidden backup, cache, or restore point will be kept. Nova AI will lose all awareness of this detail forever.
               </p>
 
               <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 font-mono text-[10px] text-slate-400">

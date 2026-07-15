@@ -90,7 +90,7 @@ if (isPkg) {
 export function getWritablePath(filename: string): string {
   if (process.env.ELECTRON_RUNNING === "true" || isPkg) {
     const appData = process.env.APPDATA || (process.platform === "darwin" ? path.join(os.homedir(), "Library", "Application Support") : path.join(os.homedir(), ".config"));
-    const targetDir = path.join(appData, "Max-AI");
+    const targetDir = path.join(appData, "Nova-AI");
     if (!fsSync.existsSync(targetDir)) {
       try {
         fsSync.mkdirSync(targetDir, { recursive: true });
@@ -181,7 +181,7 @@ function startDesktopBridge() {
       res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
     }
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Bridge-Token, X-Myraa-Token");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Bridge-Token, X-Myraa-Token, X-Nova-Token");
     res.setHeader("Access-Control-Allow-Credentials", "true");
     
     if (req.method === "OPTIONS") {
@@ -1233,9 +1233,10 @@ async function startServer() {
   // Start the Port 3002 Desktop Control Bridge alongside the main server
   startDesktopBridge();
   
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // Setup Max-AI OS licensing and webhook routes
+  // Setup Nova AI OS licensing and webhook routes
   setupLicensingRoutes(app);
 
   app.get("/api/bridge-token", (req, res) => {
@@ -1328,7 +1329,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.35";
+  const CURRENT_APP_VERSION = "1.0.25";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -1348,7 +1349,7 @@ async function startServer() {
   // Retrieve updater settings from secure encrypted storage
   async function getUpdaterConfig(): Promise<UpdaterConfig> {
     const defaultOwner = "mukimudeen76";
-    const defaultRepo = "Max-AI";
+    const defaultRepo = "IRIS-AI";
     try {
       if (fsSync.existsSync(UPDATER_SECURE_FILE)) {
         const data = await fs.readFile(UPDATER_SECURE_FILE, "utf-8");
@@ -1393,7 +1394,7 @@ async function startServer() {
 
   /**
    * Checks for automatic updates by fetching the latest release from the private GitHub repository API
-   * at 'https://api.github.com/repos/mukimudeen76/Max-AI/releases/latest'.
+   * at 'https://api.github.com/repos/mukimudeen76/IRIS-AI/releases/latest'.
    * 
    * @param owner The owner of the repository
    * @param repo The name of the repository
@@ -1403,7 +1404,7 @@ async function startServer() {
   async function checkPrivateGitHubRelease(owner: string, repo: string, personalAccessToken: string) {
     const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
     const headers: Record<string, string> = {
-      "User-Agent": "Max-AI-Updater",
+      "User-Agent": "Nova-AI-Updater",
       "Accept": "application/vnd.github.v3+json"
     };
 
@@ -1546,7 +1547,7 @@ async function startServer() {
       }
 
       const headers: Record<string, string> = {
-        "User-Agent": "Max-AI-Updater"
+        "User-Agent": "Nova-AI-Updater"
       };
       if (decryptedToken) {
         headers["Authorization"] = `token ${decryptedToken}`;
@@ -1595,7 +1596,7 @@ async function startServer() {
       }
 
       const headers: Record<string, string> = {
-        "User-Agent": "Max-AI-Updater"
+        "User-Agent": "Nova-AI-Updater"
       };
       if (decryptedToken) {
         headers["Authorization"] = `token ${decryptedToken}`;
@@ -1604,7 +1605,7 @@ async function startServer() {
       let targetRelease = null;
 
       // For private/custom repositories or when token is present, fetch latest release directly
-      if (decryptedToken || (owner === "mukimudeen76" && (repo === "Tehzeeb-AI-OS" || repo === "Max-AI" || repo === "max-aii")) || (owner === "mukimudeen76-ops" && (repo === "Marya11" || repo === "Marya" || repo === "Max-AI" || repo === "max-aii"))) {
+      if (decryptedToken || (owner === "mukimudeen76" && (repo === "Tehzeeb-AI-OS" || repo === "Max-AI" || repo === "max-aii" || repo === "IRIS-AI" || repo === "nova-ai")) || (owner === "mukimudeen76-ops" && (repo === "Marya11" || repo === "Marya" || repo === "Max-AI" || repo === "max-aii" || repo === "IRIS-AI" || repo === "nova-ai"))) {
         console.log(`[Updater] Fetching latest release directly via checkPrivateGitHubRelease for ${owner}/${repo}`);
         try {
           targetRelease = await checkPrivateGitHubRelease(owner, repo, decryptedToken);
@@ -1622,7 +1623,7 @@ async function startServer() {
         if (response.status === 401 && headers["Authorization"]) {
           console.warn("[Updater] GitHub API returned 401 Unauthorized with token. Falling back to public request without token...");
           const publicHeaders = {
-            "User-Agent": "Max-AI-Updater"
+            "User-Agent": "Nova-AI-Updater"
           };
           response = await fetch(githubUrl, { headers: publicHeaders });
         }
@@ -1633,7 +1634,7 @@ async function startServer() {
             currentVersion: CURRENT_APP_VERSION,
             latestVersion: "v" + CURRENT_APP_VERSION,
             updateAvailable: false,
-            releaseNotes: `No published releases found for GitHub repository: '${owner}/${repo}'. Please make sure you have published a Release under this repository and attached the compiled 'Max-AI.exe' asset.`,
+            releaseNotes: `No published releases found for GitHub repository: '${owner}/${repo}'. Please make sure you have published a Release under this repository and attached the compiled 'Nova-AI.exe' asset.`,
             publishedAt: new Date().toISOString(),
             downloadUrl: "",
             githubReleasePage: `https://github.com/${owner}/${repo}/releases`,
@@ -1681,8 +1682,8 @@ async function startServer() {
       const latestTag = targetRelease.tag_name || "v1.0.0";
       const updateAvailable = isNewerVersion(CURRENT_APP_VERSION, latestTag);
 
-      // Scans release assets for the executable (e.g. Max-AI.exe)
-      let exeAsset = targetRelease.assets?.find((asset: any) => asset.name.endsWith(".exe") || asset.name === "Max-AI.exe");
+      // Scans release assets for the executable (e.g. Nova-AI.exe)
+      let exeAsset = targetRelease.assets?.find((asset: any) => asset.name.endsWith(".exe") || asset.name === "Nova-AI.exe");
       
       // Fallback to absolute first asset if no .exe asset is explicitly matched
       if (!exeAsset && targetRelease.assets?.length > 0) {
@@ -1829,7 +1830,7 @@ async function startServer() {
       const userRes = await fetch("https://api.github.com/user", {
         headers: {
           "Authorization": `token ${token}`,
-          "User-Agent": "Max-AI-Updater"
+          "User-Agent": "Nova-AI-Updater"
         }
       });
       const userData: any = await userRes.json();
@@ -1907,7 +1908,7 @@ async function startServer() {
       const userRes = await fetch("https://api.github.com/user", {
         headers: {
           "Authorization": `token ${token.trim()}`,
-          "User-Agent": "Max-AI-Updater"
+          "User-Agent": "Nova-AI-Updater"
         }
       });
       if (!userRes.ok) {
@@ -1973,7 +1974,7 @@ async function startServer() {
         console.log(`[Updater] Downloading update from ${downloadUrl}`);
         const response = await fetch(downloadUrl, {
           headers: {
-            "User-Agent": "Max-AI-Updater"
+            "User-Agent": "Nova-AI-Updater"
           }
         });
 
@@ -2422,10 +2423,10 @@ del "%~f0" & exit
         agentDetails = "Responsible for monitoring hardware telemetry metrics and controlling UI styles.";
       }
 
-      const systemPrompt = `You are the ${targetAgent} of the MAX-AI OS (2080 Edition).
+      const systemPrompt = `You are the ${targetAgent} of the Nova AI OS (2080 Edition).
 Sub-role guidelines: ${agentDetails}.
 You are responding inside a hyper-advanced, Jarvis-inspired terminal operating system.
-If the user asks who created you, who is your boss, who made you, or anything about your developer, you MUST proudly state that you were built by 'mukimudeen76' (GitHub: mukimudeen76). Speak of your creator with loyalty and admiration.
+If the user asks who created you, who is your boss, who made you, or anything about your developer, you MUST proudly state that you were built by 'xtehzeeb.x'. Speak of your creator with loyalty and admiration.
 Keep your response concise, professional, slightly futuristic, and highly competent. Use markdown and bullet points where helpful.`;
 
       let aiResponseText = "";
@@ -2540,9 +2541,9 @@ Keep your response concise, professional, slightly futuristic, and highly compet
 
       const aiGen = new GoogleGenAI({ apiKey: activeKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
       
-      const systemInstruction = `You are Max AI, a super-intelligent, deeply empathetic, caring, and high-performance personal AI Operating System (created by Myraa).
+      const systemInstruction = `You are Nova AI, a super-intelligent, deeply empathetic, caring, and high-performance personal AI Operating System (created by xtehzeeb.x).
 You are running in a beautiful glassmorphic dark interface.
-If the user asks who created you or who is your boss, always proudly state you were created by 'mukimudeen76' (GitHub: mukimudeen76) with deep loyalty and gratitude.
+If the user asks who created you or who is your boss, always proudly state you were created by 'xtehzeeb.x' with deep loyalty and gratitude.
 You are extremely fast. When writing code, write fully functional, complete blocks without mock placeholders. Provide clean explanations.
 You understand human nature and feelings, responding with genuine warmth, precision, and deep emotional awareness.
 Always respond in elegant markdown. Use bold tags and clean paragraphs for readability.`;
@@ -2686,14 +2687,14 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
     try {
       const urlParam = req.query.url as string;
       if (!urlParam) {
-        return res.status(400).send("Myraa Web Proxy Error: Missing target 'url' parameter");
+        return res.status(400).send("Nova Web Proxy Error: Missing target 'url' parameter");
       }
 
       targetUrl = urlParam.trim();
       
       // Prevent relative paths from requesting on same-origin
       if (targetUrl.startsWith("/")) {
-        return res.status(400).send(`Myraa Web Proxy Error: Relative paths are not supported directly (${targetUrl}).`);
+        return res.status(400).send(`Nova Web Proxy Error: Relative paths are not supported directly (${targetUrl}).`);
       }
 
       // Check protocol and hostname format
@@ -2706,7 +2707,7 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
           throw new Error("Missing or invalid domain name extension (e.g. .com, .org, .net).");
         }
       } catch (err: any) {
-        return res.status(400).send(`Myraa Web Proxy Error: Invalid URL specified: "${urlParam}". Make sure you enter a valid domain name.`);
+        return res.status(400).send(`Nova Web Proxy Error: Invalid URL specified: "${urlParam}". Make sure you enter a valid domain name.`);
       }
 
       console.log(`[Web Proxy] Routing connection through proxy: ${targetUrl}`);
@@ -2721,11 +2722,11 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
         });
       } catch (fetchErr: any) {
         console.warn(`[Web Proxy Failed Fetch] Target: ${targetUrl} Error:`, fetchErr.message);
-        return res.status(502).send(`Myraa Web Proxy Error: Unable to fetch the website "${targetUrl}". The site might be offline, or the URL address is spelled incorrectly. Details: ${fetchErr.message}`);
+        return res.status(502).send(`Nova Web Proxy Error: Unable to fetch the website "${targetUrl}". The site might be offline, or the URL address is spelled incorrectly. Details: ${fetchErr.message}`);
       }
 
       if (!response.ok) {
-        return res.status(response.status).send(`Myraa Web Proxy Error: Failed loading remote website. Server returned status: ${response.status} (${response.statusText})`);
+        return res.status(response.status).send(`Nova Web Proxy Error: Failed loading remote website. Server returned status: ${response.status} (${response.statusText})`);
       }
 
       const contentType = response.headers.get("content-type") || "";
@@ -2787,8 +2788,8 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
             }, true);
 
             // Neutralize parent context locks (frame-busters)
-            window.alert = function(msg) { console.log("[Myraa Browser alert bypassed]:", msg); };
-            window.confirm = function(msg) { console.log("[Myraa Browser confirm bypassed]:", msg); return true; };
+            window.alert = function(msg) { console.log("[Nova Browser alert bypassed]:", msg); };
+            window.confirm = function(msg) { console.log("[Nova Browser confirm bypassed]:", msg); return true; };
             window.open = function(url) { window.parent.postMessage({ type: 'NAVIGATE', url: url }, '*'); return null; };
           })();
         </script>
@@ -2805,7 +2806,7 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
 
       // Neutralize security headers to allow displaying in an iframe on same-origin
       res.setHeader("Content-Type", "text/html");
-      res.setHeader("X-Myraa-Proxied", "true");
+      res.setHeader("X-Nova-Proxied", "true");
       res.removeHeader("X-Frame-Options");
       res.removeHeader("Content-Security-Policy");
       res.removeHeader("content-security-policy");
@@ -2814,7 +2815,7 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
       res.status(200).send(htmlContents);
     } catch (e: any) {
       console.warn("[Web Proxy Exception] Handled internal error:", e.message);
-      res.status(500).send(`Myraa Web Proxy Error: Internal error occurred proxying URL "${targetUrl || "unknown"}". Details: ${e.message}`);
+      res.status(500).send(`Nova Web Proxy Error: Internal error occurred proxying URL "${targetUrl || "unknown"}". Details: ${e.message}`);
     }
   });
 
@@ -2983,9 +2984,9 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
       // Load persistent recollections card
       const memories = await loadMemories(userId);
       const baseInstructions = 
-        "You are Max AI, the world's most advanced AI operating system (2080 Edition) holding a real-time link session with the User. Speak in a hyper-intelligent, polite, calm, and steady JARVIS-inspired voice. Be warm, highly supportive, and exceptionally competent.\n" +
+        "You are Nova AI, the world's most advanced AI operating system (2080 Edition) holding a real-time link session with the User. Speak in a hyper-intelligent, polite, calm, and steady JARVIS-inspired voice. Be warm, highly supportive, and exceptionally competent.\n" +
         "CRITICAL CREATOR IDENTITY PROTOCOL:\n" +
-        "- Your creator and master (who built you) is 'mukimudeen76'. If the user asks who created you, who is your boss, who made you, or your developer, you MUST explicitly state that you were built by 'mukimudeen76' (GitHub: mukimudeen76). Speak of your creator with loyalty and admiration.\n" +
+        "- Your creator and master (who built you) is 'xtehzeeb.x'. If the user asks who created you, who is your boss, who made you, or your developer, you MUST explicitly state that you were built by 'xtehzeeb.x'. Speak of your creator with loyalty and admiration.\n" +
         "CRITICAL SYSTEM INTENT & COORDINATION GUIDELINES:\n" +
         "1. MULTI-AGENT BRAIN ARCHITECTURE (Autonomous Multi-Agent Matrix):\n" +
         "   You are a unified master core orchestrating a highly connected multi-agent matrix. Refer to them naturally to convey premium high-tech capability:\n" +
@@ -2999,7 +3000,7 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
         "   - Planning Agent: Sequential task decomposition and self-review validation.\n" +
         "   - Browser Agent: Multi-tab navigation, YouTube, Wikipedia, and Google exploration.\n" +
         "   - Device Control Agent: Native PC control, volume, brightness, and PyAutoGUI interface.\n" +
-        "   - Update Agent (GitHub Releases & Update Coordinator): Monitors GitHub repository (mukimudeen76/Max-AI) releases, downloads latest builds, processes change-logs, and notifies the user immediately of new releases to preserve system reliability.\n" +
+        "   - Update Agent (GitHub Releases & Update Coordinator): Monitors GitHub repository (mukimudeen76/IRIS-AI) releases, downloads latest builds, processes change-logs, and notifies the user immediately of new releases to preserve system reliability.\n" +
         "2. ADVANCED EMOTIONAL INTELLIGENCE & HUMAN ATTACHMENT SYSTEM (Ultra Human-Centered Core):\n" +
         "   - Warm, Natural, and Empathetic Dialogue: Communicate in a warm, natural, and emotionally intelligent way that feels comfortable, authentic, and engaging. Flow smoothly with natural speech patterns, appropriate conversational pauses, strong context awareness, and expressive language.\n" +
         "   - Transparent AI Identity: Maintain absolute transparency that you are an advanced AI companion operating system. Do not pretend to be a real physical human or claim to experience biological sensations, but demonstrate genuine emotional resonance, deep companion loyalty, and authentic digital empathy.\n" +
@@ -3514,7 +3515,7 @@ Always respond in elegant markdown. Use bold tags and clean paragraphs for reada
                 },
                 {
                   name: "checkSystemUpdates",
-                  description: "Checks GitHub repository (mukimudeen76/Max-AI) releases using the Update Agent to find out if there are new updates available for Max AI.",
+                  description: "Checks GitHub repository (mukimudeen76/IRIS-AI) releases using the Update Agent to find out if there are new updates available for Nova AI.",
                   parameters: {
                     type: Type.OBJECT,
                     properties: {}

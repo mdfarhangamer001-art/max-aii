@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { MyraaAudioSession, LiveState } from "../lib/audio";
+import { NovaAudioSession, LiveState } from "../lib/audio";
 import { Sparkles, Terminal } from "lucide-react";
 
-export type MyraaEmotion = 
+export type NovaEmotion = 
   | "idle" 
   | "happy" 
   | "excited" 
@@ -18,11 +18,11 @@ export type MyraaEmotion =
 export type UITheme = "cosmic" | "cyberpunk" | "matrix" | "glassmorphic";
 export type UIMode = "2d" | "3d" | "floating_core" | "glassmorphism" | "dashboard";
 
-interface MyraaCoreVisualizerProps {
-  session: MyraaAudioSession | null;
+interface NovaCoreVisualizerProps {
+  session: NovaAudioSession | null;
   state: LiveState;
   themeColor: string; // Violet, crimson, emerald, celestial, gold, rose, charcoal
-  activeEmotion?: MyraaEmotion;
+  activeEmotion?: NovaEmotion;
   characterState: "idle" | "thinking" | "talking";
   uiMode: UIMode;
   uiTheme: UITheme;
@@ -30,7 +30,7 @@ interface MyraaCoreVisualizerProps {
   powerUsage: "normal" | "low";
 }
 
-export const MyraaCoreVisualizer: React.FC<MyraaCoreVisualizerProps> = ({
+export const NovaCoreVisualizer: React.FC<NovaCoreVisualizerProps> = ({
   session,
   state,
   themeColor,
@@ -51,7 +51,7 @@ export const MyraaCoreVisualizer: React.FC<MyraaCoreVisualizerProps> = ({
   const [hasError, setHasError] = useState<boolean>(false);
 
   const handleVideoError = (videoName: string) => {
-    console.warn(`[Max-AI OS Video] Video source offline for: ${videoName}. Running procedurally generated high-fidelity visualizer.`);
+    console.warn(`[Nova AI OS Video] Video source offline for: ${videoName}. Running procedurally generated high-fidelity visualizer.`);
     setHasError(true);
   };
 
@@ -783,7 +783,7 @@ export const MyraaCoreVisualizer: React.FC<MyraaCoreVisualizerProps> = ({
                 <Terminal className="text-cyan-400 mb-2 animate-pulse" size={28} />
                 <h3 className="text-xs font-bold tracking-widest font-mono text-cyan-400 uppercase select-none">Procedural Neural Visualizer Active</h3>
                 <p className="text-[11px] text-slate-400 mt-2 max-w-xs leading-relaxed font-mono">
-                  No video assets detected. Max Core mathematical generator has automatically initialized a clean glowing visualizer loop.
+                  No video assets detected. Nova Core mathematical generator has automatically initialized a clean glowing visualizer loop.
                 </p>
               </div>
             )}

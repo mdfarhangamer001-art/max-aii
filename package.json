@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.0.17",
+  "version": "1.0.23",
   "type": "module",
   "main": "electron-main.cjs",
   "bin": "dist/server.cjs",
@@ -45,8 +45,8 @@
     "vite": "^6.2.3"
   },
   "build": {
-    "appId": "com.maxai.os",
-    "productName": "Max-AI OS",
+    "appId": "com.novaai.os",
+    "productName": "Nova AI OS",
     "asar": false,
     "directories": {
       "output": "release"
@@ -73,7 +73,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Max-AI OS",
+      "shortcutName": "Nova AI OS",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "runAfterFinish": true

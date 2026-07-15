@@ -1,6 +1,6 @@
 /**
- * Myraa Playwright Local Agent Server
- * Run this locally on your machine to grant Myraa real control over your browser!
+ * Nova AI Playwright Local Agent Server
+ * Run this locally on your machine to grant Nova AI real control over your browser!
  * 
  * Setup instructions:
  * 1. Make sure you have Node.js installed.
@@ -9,7 +9,7 @@
  * 4. Run: npx playwright install chromium
  * 5. Launch the server: node local-agent.js
  * 
- * This server binds to port 3001 on localhost, permitting Myraa's web portal to issue
+ * This server binds to port 3001 on localhost, permitting Nova AI's web portal to issue
  * real-time Playwright actions directly on your physical computer.
  */
 
@@ -25,7 +25,7 @@ const PORT = 3001;
 
 // Manage persistent local security token
 let authToken = "";
-const tokenFilePath = path.join(process.cwd(), "myraa-token.txt");
+const tokenFilePath = path.join(process.cwd(), "nova-token.txt");
 try {
   if (fs.existsSync(tokenFilePath)) {
     authToken = fs.readFileSync(tokenFilePath, "utf8").trim();
@@ -66,7 +66,7 @@ app.use(express.json());
 
 // Token Authentication Middleware
 function authenticateRequest(req, res, next) {
-  const authHeader = req.headers["authorization"] || req.headers["x-myraa-token"];
+  const authHeader = req.headers["authorization"] || req.headers["x-myraa-token"] || req.headers["x-nova-token"];
   let requestToken = "";
   if (authHeader) {
     if (authHeader.startsWith("Bearer ")) {
@@ -82,7 +82,7 @@ function authenticateRequest(req, res, next) {
     next();
   } else {
     console.warn(`[UNAUTHORIZED ATTEMPT] Blocked request from origin: ${req.headers.origin || "Unknown"}`);
-    res.status(401).json({ error: "Unauthorized: Invalid or missing Myraa local security token." });
+    res.status(401).json({ error: "Unauthorized: Invalid or missing Nova AI local security token." });
   }
 }
 
@@ -446,7 +446,7 @@ app.post("/api/action", async (req, res) => {
       }
 
       default:
-        throw new Error(`Directive '${type}' not recognized by Myraa's local Playwright engine.`);
+        throw new Error(`Directive '${type}' not recognized by Nova AI's local Playwright engine.`);
     }
 
   } catch (err) {
@@ -458,9 +458,9 @@ app.post("/api/action", async (req, res) => {
 // Start Express server binding ONLY to loopback 127.0.0.1 for maximum security
 app.listen(PORT, "127.0.0.1", () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 Myraa Playwright Local Agent Server Running!`);
+  console.log(`🚀 Nova AI Playwright Local Agent Server Running!`);
   console.log(`📡 Secure Local Loopback: http://127.0.0.1:${PORT}`);
-  console.log(`🔑 persistent Auth Token saved to 'myraa-token.txt'`);
+  console.log(`🔑 persistent Auth Token saved to 'nova-token.txt'`);
   console.log(`🛡️  CORS restricted to authorized secure frames only.`);
   console.log(`======================================================\n`);
   console.log(`🔐 Access Token: ${authToken}\n`);

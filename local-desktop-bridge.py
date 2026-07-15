@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Max-AI OS (2080 Edition) - Local Desktop Control Bridge
+Nova AI OS (2080 Edition) - Local Desktop Control Bridge
 -----------------------------------------------------------
-This Python script runs locally on your computer to grant Max-AI OS 
+This Python script runs locally on your computer to grant Nova AI OS 
 secure control over your local desktop environment (keyboard, mouse, launching apps, etc.).
 
 Security Disclaimer:
@@ -69,7 +69,7 @@ def log_message(text, log_type="INFO"):
         logs_list.pop(0)
 
 # Register starting message
-log_message("Max-AI OS Desktop Controller Bridge initializing...", "INFO")
+log_message("Nova AI OS Desktop Controller Bridge initializing...", "INFO")
 if HAS_PYAUTOGUI:
     log_message("PyAutoGUI automation engine loaded successfully.", "SUCCESS")
 else:
@@ -132,7 +132,7 @@ class DesktopBridgeRequestHandler(BaseHTTPRequestHandler):
         if self.command == "OPTIONS":
             return True
             
-        auth_header = self.headers.get("Authorization") or self.headers.get("X-Bridge-Token") or self.headers.get("X-Myraa-Token")
+        auth_header = self.headers.get("Authorization") or self.headers.get("X-Bridge-Token") or self.headers.get("X-Myraa-Token") or self.headers.get("X-Nova-Token")
         token = ""
         if auth_header:
             if auth_header.startswith("Bearer "):
@@ -157,7 +157,7 @@ class DesktopBridgeRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self._set_cors_headers()
         self.end_headers()
-        self.wfile.write(json.dumps({"error": "Unauthorized: Invalid or missing Max-AI local security token."}).encode("utf-8"))
+        self.wfile.write(json.dumps({"error": "Unauthorized: Invalid or missing Nova AI local security token."}).encode("utf-8"))
         return False
 
     def _set_cors_headers(self):
@@ -177,7 +177,7 @@ class DesktopBridgeRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "http://localhost:3000")
             
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Bridge-Token, X-Myraa-Token")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Bridge-Token, X-Myraa-Token, X-Nova-Token")
         self.send_header("Access-Control-Allow-Credentials", "true")
 
     def do_OPTIONS(self):
@@ -973,7 +973,7 @@ class DesktopBridgeRequestHandler(BaseHTTPRequestHandler):
             stdout, stderr = proc.communicate()
             return proc.returncode, stdout, stderr
         except FileNotFoundError:
-            raise Exception("ADB (Android Debug Bridge) executable is not installed. For a one-click automated setup, please run 'setup_max_ai.bat' (Windows) or 'setup_max_ai.sh' (Mac/Linux) which will download and install ADB automatically.")
+            raise Exception("ADB (Android Debug Bridge) executable is not installed. For a one-click automated setup, please run 'setup_nova_ai.bat' (Windows) or 'setup_nova_ai.sh' (Mac/Linux) which will download and install ADB automatically.")
 
 
 
@@ -982,7 +982,7 @@ def run_server():
     httpd = HTTPServer(server_address, DesktopBridgeRequestHandler)
     
     log_message(f"======================================================", "INFO")
-    log_message(f"🚀 Max-AI OS Local Desktop Control Bridge Running!", "SUCCESS")
+    log_message(f"🚀 Nova AI OS Local Desktop Control Bridge Running!", "SUCCESS")
     log_message(f"📡 Secure Loopback Address: http://127.0.0.1:{PORT}", "INFO")
     log_message(f"🔑 Persistent Security Token: {authToken}", "SUCCESS")
     log_message(f"🔒 Authenticate frames using bearer/query parameter 'token'", "INFO")
