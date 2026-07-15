@@ -1329,7 +1329,7 @@ async function startServer() {
   });
 
   // === MAX-AI SOFTWARE AUTO-UPDATE MATRIX ===
-  const CURRENT_APP_VERSION = "1.0.32";
+  const CURRENT_APP_VERSION = "1.0.34";
   let downloadInProgress = false;
   let downloadProgress = 0;
   let downloadError = "";
@@ -2752,11 +2752,33 @@ DO NOT add any conversational filler. Only output the final enhanced prompt text
       const base64Image = response.generatedImages[0].image.imageBytes;
       const imageUrl = `data:image/jpeg;base64,${base64Image}`;
 
+      // 3. Generate beautiful cinematic narration via Gemini 2.5 Flash
+      let narration = `Visualizing ${prompt}. An extraordinary digital render displaying incredible depth, lighting, and detail.`;
+      try {
+        const narrationSystemPrompt = `You are a legendary movie trailer narrator with a deep, dramatic, poetic, and majestic voice.
+Given a visual prompt, write an epic, short 2-sentence trailer narration describing the scene as it is revealed.
+Keep it extremely short (under 30 words) for maximum impact.
+Do NOT include any conversational filler, quotes, labels, or intro. Output ONLY the narration text.`;
+
+        const narrationResponse = await aiGen.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [{ role: "user", parts: [{ text: `Prompt details: "${finalPrompt}"` }] }],
+          config: { systemInstruction: narrationSystemPrompt }
+        });
+
+        if (narrationResponse.text) {
+          narration = narrationResponse.text.trim().replace(/^"|"$/g, "");
+        }
+      } catch (narrateErr: any) {
+        console.warn("[Narration Generation Failed]:", narrateErr);
+      }
+
       res.json({
         success: true,
         imageUrl,
         refinedPrompt: finalPrompt,
-        originalPrompt: prompt
+        originalPrompt: prompt,
+        narration
       });
     } catch (err: any) {
       console.error("[Generate Image API Error]:", err);
